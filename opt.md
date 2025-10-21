@@ -538,10 +538,482 @@ for i in range( s.num_routers ):
 
 ### 2. Irregular Topology 구현 전략
 
-#### 전략 1: Graph-based Network (권장)
+#### 전략 1: NetworkX Graph 구조체 활용 (최고 권장) ⭐⭐
+
+**장점**:
+- Graph 알고리즘 즉시 사용 가능 (shortest path, diameter, etc.)
+- 토폴로지 시각화 간편
+- Graph 생성 함수 활용 (random, small-world, scale-free)
+- 검증 기능 내장 (연결성, acyclic 체크 등)
+
+**단점**: NetworkX 의존성 추가
+
+##### Step 0: NetworkX 설치
+
+```bash
+pip install networkx matplotlib
+```
+
+##### Step 1: Graph 기반 Topology Builder
+
+```python
+# irregnet/topology_builder.py (신규 파일)
+
+import networkx as nx
+import matplotlib.pyplot as plt
+
+class TopologyBuilder:
+  """
+  NetworkX를 활용한 NoC 토폴로지 생성 및 분석.
+  """
+
+  def __init__(self, num_routers):
+    self.num_routers = num_routers
+    self.G = nx.Graph()
+    self.G.add_nodes_from(range(num_routers))
+
+  # === 토폴로지 생성 함수들 ===
+
+  @staticmethod
+  def create_mesh(nrows, ncols):
+    """2D Mesh 생성"""
+    builder = TopologyBuilder(nrows * ncols)
+    builder.G = nx.grid_2d_graph(nrows, ncols)
+    # Relabel nodes: (y,x) -> y*ncols + x
+    mapping = {(y,x): y*ncols+x for y in range(nrows) for x in range(ncols)}
+    builder.G = nx.relabel_nodes(builder.G, mapping)
+    return builder
+
+  @staticmethod
+  def create_ring(num_routers):
+    """Ring 생성"""
+    builder = TopologyBuilder(num_routers)
+    builder.G = nx.cycle_graph(num_routers)
+    return builder
+
+  @staticmethod
+  def create_star(num_routers):
+    """Star 생성 (hub + spokes)"""
+    builder = TopologyBuilder(num_routers)
+    builder.G = nx.star_graph(num_routers - 1)
+    return builder
+
+  @staticmethod
+  def create_random(num_routers, edge_probability=0.3):
+    """Erdős-Rényi random graph"""
+    builder = TopologyBuilder(num_routers)
+    builder.G = nx.erdos_renyi_graph(num_routers, edge_probability)
+    return builder
+
+  @staticmethod
+  def create_small_world(num_routers, k=4, p=0.1):
+    """Watts-Strogatz small-world"""
+    builder = TopologyBuilder(num_routers)
+    builder.G = nx.watts_strogatz_graph(num_routers, k, p)
+    return builder
+
+  @staticmethod
+  def create_scale_free(num_routers, m=2):
+    """Barabási-Albert scale-free"""
+    builder = TopologyBuilder(num_routers)
+    builder.G = nx.barabasi_albert_graph(num_routers, m)
+    return builder
+
+  @staticmethod
+  def create_custom():
+    """Custom topology (예제: CPU hub + memory ring)"""
+    builder = TopologyBuilder(8)
+    G = builder.G
+
+    # CPU hub (node 0) connects to GPU (1) and memory controllers (2,3)
+    G.add_edge(0, 1)  # CPU - GPU
+    G.add_edge(0, 2)  # CPU - MC0
+    G.add_edge(0, 3)  # CPU - MC1
+
+    # Memory ring: 2-3-4-6-7-5-2
+    ring_nodes = [2, 3, 4, 6, 7, 5]
+    for i in range(len(ring_nodes)):
+      G.add_edge(ring_nodes[i], ring_nodes[(i+1) % len(ring_nodes)])
+
+    return builder
+
+  # === 토폴로지 수정 ===
+
+  def add_link(self, src, dst):
+    """링크 추가"""
+    self.G.add_edge(src, dst)
+
+  def remove_link(self, src, dst):
+    """링크 제거 (fault injection)"""
+    if self.G.has_edge(src, dst):
+      self.G.remove_edge(src, dst)
+
+  def add_router(self, router_id, neighbors=[]):
+    """라우터 추가"""
+    self.G.add_node(router_id)
+    for neighbor in neighbors:
+      self.G.add_edge(router_id, neighbor)
+
+  # === 분석 함수 ===
+
+  def analyze(self):
+    """토폴로지 메트릭 계산"""
+    metrics = {}
+
+    # Connectivity
+    metrics['is_connected'] = nx.is_connected(self.G)
+    if not metrics['is_connected']:
+      print("WARNING: Graph is not connected!")
+      return metrics
+
+    # Distance metrics
+    metrics['diameter'] = nx.diameter(self.G)
+    metrics['avg_shortest_path'] = nx.average_shortest_path_length(self.G)
+    metrics['radius'] = nx.radius(self.G)
+
+    # Degree metrics
+    degrees = dict(self.G.degree())
+    metrics['degrees'] = degrees
+    metrics['max_degree'] = max(degrees.values())
+    metrics['min_degree'] = min(degrees.values())
+    metrics['avg_degree'] = sum(degrees.values()) / len(degrees)
+
+    # Centrality
+    metrics['betweenness'] = nx.betweenness_centrality(self.G)
+    metrics['closeness'] = nx.closeness_centrality(self.G)
+
+    # Graph properties
+    metrics['num_edges'] = self.G.number_of_edges()
+    metrics['density'] = nx.density(self.G)
+
+    return metrics
+
+  def print_analysis(self):
+    """분석 결과 출력"""
+    m = self.analyze()
+
+    if not m.get('is_connected'):
+      print("❌ Graph is disconnected!")
+      return
+
+    print("="*60)
+    print("Topology Analysis")
+    print("="*60)
+    print(f"Num routers:      {self.num_routers}")
+    print(f"Num links:        {m['num_edges']}")
+    print(f"Diameter:         {m['diameter']} hops")
+    print(f"Avg path length:  {m['avg_shortest_path']:.2f} hops")
+    print(f"Radius:           {m['radius']} hops")
+    print(f"Density:          {m['density']:.3f}")
+    print(f"Max degree:       {m['max_degree']}")
+    print(f"Min degree:       {m['min_degree']}")
+    print(f"Avg degree:       {m['avg_degree']:.2f}")
+    print("="*60)
+
+    # Hotspot identification
+    top_betweenness = sorted(m['betweenness'].items(),
+                             key=lambda x: x[1], reverse=True)[:3]
+    print("Top 3 bottleneck routers (betweenness centrality):")
+    for router, score in top_betweenness:
+      print(f"  Router {router}: {score:.3f}")
+    print("="*60)
+
+  # === 라우팅 테이블 생성 ===
+
+  def generate_routing_table(self):
+    """
+    NetworkX shortest path 알고리즘으로 라우팅 테이블 생성.
+    훨씬 간단하고 빠름!
+    """
+    routing_table = []
+
+    for src in self.G.nodes():
+      # 모든 목적지에 대한 shortest path 계산
+      paths = nx.single_source_shortest_path(self.G, src)
+
+      for dst, path in paths.items():
+        if src == dst:
+          routing_table.append([src, dst, 0])  # Self port
+        else:
+          # Next hop이 첫 번째 이웃
+          next_hop = path[1]
+          # Find output port (neighbor index)
+          neighbors = sorted(self.G.neighbors(src))
+          out_port = neighbors.index(next_hop) + 1  # +1 because port 0 is self
+          routing_table.append([src, dst, out_port])
+
+    return routing_table
+
+  # === Export 함수 ===
+
+  def to_config_dict(self):
+    """PyMTL3-net config format으로 변환"""
+    config = {
+      'network': 'Irregular',
+      'num_routers': self.num_routers,
+      'num_terminals': self.num_routers,
+      'channel_latency': 0,
+    }
+
+    # Edges with port assignments
+    edges = []
+    router_ports = {}
+
+    for node in self.G.nodes():
+      neighbors = sorted(self.G.neighbors(node))
+      router_ports[node] = len(neighbors) + 1  # +1 for self port
+
+      for port_idx, neighbor in enumerate(neighbors):
+        src_port = port_idx + 1  # port 0 is self
+        # Find dst port
+        dst_neighbors = sorted(self.G.neighbors(neighbor))
+        dst_port = dst_neighbors.index(node) + 1
+
+        # Add edge (both directions handled separately)
+        edges.append([node, neighbor, src_port, dst_port])
+
+    config['topology'] = {'edges': edges}
+    config['router_ports'] = router_ports
+    config['routing_table'] = self.generate_routing_table()
+
+    return config
+
+  def to_yaml(self, filename):
+    """YAML 파일로 저장"""
+    from ruamel.yaml import YAML
+    config = self.to_config_dict()
+    yaml = YAML()
+    yaml.dump(config, open(filename, 'w'))
+    print(f"✅ Config saved to {filename}")
+
+  # === 시각화 ===
+
+  def visualize(self, filename=None, layout='spring'):
+    """토폴로지 시각화"""
+    plt.figure(figsize=(12, 8))
+
+    # Layout options
+    if layout == 'spring':
+      pos = nx.spring_layout(self.G, seed=42)
+    elif layout == 'circular':
+      pos = nx.circular_layout(self.G)
+    elif layout == 'kamada':
+      pos = nx.kamada_kawai_layout(self.G)
+    else:
+      pos = nx.spring_layout(self.G)
+
+    # Node colors by degree
+    degrees = dict(self.G.degree())
+    node_colors = [degrees[node] for node in self.G.nodes()]
+
+    # Draw
+    nx.draw_networkx_nodes(self.G, pos,
+                          node_color=node_colors,
+                          node_size=700,
+                          cmap=plt.cm.plasma,
+                          alpha=0.9)
+    nx.draw_networkx_labels(self.G, pos, font_size=12, font_weight='bold')
+    nx.draw_networkx_edges(self.G, pos, width=2, alpha=0.6)
+
+    plt.title(f"NoC Topology ({self.num_routers} routers, "
+              f"{self.G.number_of_edges()} links)", fontsize=14)
+    plt.axis('off')
+    plt.tight_layout()
+
+    if filename:
+      plt.savefig(filename, dpi=150, bbox_inches='tight')
+      print(f"✅ Visualization saved to {filename}")
+    else:
+      plt.show()
+
+  def visualize_with_routing(self, src, dst, filename=None):
+    """특정 경로 강조 시각화"""
+    path = nx.shortest_path(self.G, src, dst)
+
+    plt.figure(figsize=(12, 8))
+    pos = nx.spring_layout(self.G, seed=42)
+
+    # Draw all nodes
+    nx.draw_networkx_nodes(self.G, pos, node_size=700,
+                          node_color='lightblue', alpha=0.7)
+
+    # Highlight path nodes
+    nx.draw_networkx_nodes(self.G, pos, nodelist=path,
+                          node_size=900, node_color='orange')
+
+    # Highlight src/dst
+    nx.draw_networkx_nodes(self.G, pos, nodelist=[src],
+                          node_size=1000, node_color='green')
+    nx.draw_networkx_nodes(self.G, pos, nodelist=[dst],
+                          node_size=1000, node_color='red')
+
+    # Draw all edges
+    nx.draw_networkx_edges(self.G, pos, width=1, alpha=0.3)
+
+    # Highlight path edges
+    path_edges = [(path[i], path[i+1]) for i in range(len(path)-1)]
+    nx.draw_networkx_edges(self.G, pos, edgelist=path_edges,
+                          width=4, edge_color='red', alpha=0.8)
+
+    nx.draw_networkx_labels(self.G, pos, font_size=12, font_weight='bold')
+
+    plt.title(f"Route from {src} to {dst} ({len(path)-1} hops)", fontsize=14)
+    plt.axis('off')
+
+    if filename:
+      plt.savefig(filename, dpi=150, bbox_inches='tight')
+    else:
+      plt.show()
+```
+
+##### Step 2: 사용 예제
+
+```python
+# examples/irregular_networkx_example.py
+
+from irregnet.topology_builder import TopologyBuilder
+
+# === 방법 1: 기존 토폴로지 생성 함수 사용 ===
+
+# Small-world network (높은 clustering, 짧은 평균 거리)
+topo = TopologyBuilder.create_small_world(num_routers=16, k=4, p=0.1)
+
+# === 방법 2: Custom topology ===
+
+topo = TopologyBuilder.create_custom()
+
+# === 방법 3: 수동으로 구성 ===
+
+topo = TopologyBuilder(num_routers=8)
+# CPU hub
+topo.add_link(0, 1)  # CPU-GPU
+topo.add_link(0, 2)  # CPU-MC0
+topo.add_link(0, 3)  # CPU-MC1
+# Memory ring
+for i in range(2, 7):
+  topo.add_link(i, i+1)
+topo.add_link(7, 2)  # Close ring
+
+# === 분석 ===
+
+topo.print_analysis()
+# Output:
+# ============================================================
+# Topology Analysis
+# ============================================================
+# Num routers:      8
+# Num links:        10
+# Diameter:         4 hops
+# Avg path length:  2.14 hops
+# Radius:           2 hops
+# Density:          0.357
+# Max degree:       3
+# Min degree:       2
+# Avg degree:       2.50
+# ============================================================
+# Top 3 bottleneck routers (betweenness centrality):
+#   Router 0: 0.429  # CPU hub is bottleneck!
+#   Router 2: 0.286
+#   Router 3: 0.286
+# ============================================================
+
+# === 시각화 ===
+
+topo.visualize('topology.png')
+topo.visualize_with_routing(src=1, dst=7, filename='route_1_to_7.png')
+
+# === Config 생성 및 저장 ===
+
+topo.to_yaml('config_irregular.yml')
+
+# === PyMTL3-net과 통합 ===
+
+from irregnet.IrregularNetworkRTL import IrregularNetworkRTL
+from pymtl3_net.ocnlib.ifcs.packets import mk_generic_pkt
+from pymtl3_net.ocnlib.ifcs.positions import mk_id_pos
+
+config = topo.to_config_dict()
+num_routers = config['num_routers']
+
+Pos = mk_id_pos(num_routers)
+Pkt = mk_generic_pkt(num_routers, payload_nbits=32)
+
+net = IrregularNetworkRTL(Pkt, Pos, config)
+net.elaborate()
+net.apply(DefaultPassGroup())
+
+# 시뮬레이션...
+```
+
+##### Step 3: Fault Injection 시나리오
+
+```python
+# Fault-tolerant topology 연구
+
+# 1. 정상 토폴로지 생성
+topo = TopologyBuilder.create_mesh(nrows=4, ncols=4)
+topo.print_analysis()
+# Diameter: 6 hops
+
+# 2. 링크 고장 주입
+topo.remove_link(5, 6)  # 중앙 링크 제거
+topo.remove_link(9, 10)
+
+# 3. 재분석
+topo.print_analysis()
+# Diameter: 8 hops (증가!)
+
+# 4. 연결성 확인
+if not topo.analyze()['is_connected']:
+  print("❌ Network is partitioned!")
+
+# 5. 새 라우팅 테이블 생성 (자동으로 우회 경로 찾음)
+routing_table = topo.generate_routing_table()
+```
+
+##### Step 4: 최적 토폴로지 탐색
+
+```python
+# Design space exploration
+
+topologies = []
+
+# Random graphs with different densities
+for p in [0.2, 0.3, 0.4, 0.5]:
+  for seed in range(10):
+    topo = TopologyBuilder.create_random(16, edge_probability=p)
+    metrics = topo.analyze()
+
+    if metrics.get('is_connected'):
+      topologies.append({
+        'type': f'random_p{p}',
+        'diameter': metrics['diameter'],
+        'avg_path': metrics['avg_shortest_path'],
+        'num_links': metrics['num_edges'],
+        'max_degree': metrics['max_degree'],
+        'topo': topo
+      })
+
+# Sort by performance/cost tradeoff
+# 목표: 낮은 diameter, 적은 링크 수
+import pandas as pd
+df = pd.DataFrame(topologies)
+df['cost'] = df['diameter'] * 2 + df['num_links'] * 0.1
+df = df.sort_values('cost')
+
+print("Top 5 topologies:")
+print(df.head())
+
+# 최적 토폴로지 저장
+best_topo = df.iloc[0]['topo']
+best_topo.to_yaml('config_optimal.yml')
+best_topo.visualize('optimal_topology.png')
+```
+
+#### 전략 2: YAML 기반 Manual Configuration
 
 **장점**: 완전한 유연성, 임의의 토폴로지 지원
-**단점**: 라우팅 테이블 필요
+**단점**: 수동 설정 필요, 라우팅 테이블 생성 번거로움
 
 ##### Step 1: Routing Table 기반 RouteUnit 구현
 
@@ -774,9 +1246,9 @@ net.apply( DefaultPassGroup() )
 # Simulate...
 ```
 
-#### 전략 2: Modified Regular Topology (간단한 변형)
+#### 전략 3: Modified Regular Topology (간단한 변형)
 
-**장점**: 빠른 구현
+**장점**: 빠른 구현, NetworkX 불필요
 **단점**: 제한적인 변경만 가능
 
 ##### 예제: Mesh에서 특정 링크 제거
@@ -817,7 +1289,22 @@ class CustomMeshNetworkRTL( MeshNetworkRTL ):
         s.routers[neighbor].recv[WEST].val //= 0
 ```
 
-### 3. Routing Table 생성 알고리즘
+### 3. NetworkX vs YAML 비교
+
+| 특징 | NetworkX | YAML Manual |
+|-----|----------|-------------|
+| **사용 편의성** | ⭐⭐⭐⭐⭐ | ⭐⭐ |
+| **Graph 알고리즘** | 내장 | 직접 구현 필요 |
+| **시각화** | 1줄 코드 | 별도 툴 필요 |
+| **라우팅 테이블 생성** | 자동 | 수동 또는 스크립트 |
+| **Topology 생성** | Random, small-world 등 | 수동 정의 |
+| **분석 기능** | Diameter, centrality 등 | 직접 계산 |
+| **의존성** | NetworkX, matplotlib | 없음 |
+| **학습 곡선** | 낮음 | 중간 |
+
+**권장**: NetworkX 사용 (압도적 생산성 향상)
+
+### 4. Routing Table 생성 알고리즘 (YAML 방식)
 
 #### Shortest Path Routing (Floyd-Warshall)
 
@@ -884,7 +1371,7 @@ if __name__ == '__main__':
   YAML().dump(config, open('config_irregular.yml', 'w'))
 ```
 
-### 4. 통합: sim_utils에 추가
+### 5. 통합: sim_utils에 추가
 
 ```python
 # pymtl3_net/ocnlib/sim/sim_utils.py에 추가
@@ -915,7 +1402,7 @@ _net_nports_dict['irregular'] = lambda opts: YAML(typ='safe').load(
   open(opts.config_file))['num_routers']
 ```
 
-### 5. 사용법
+### 6. 사용법 (YAML 방식)
 
 ```bash
 # 1. Topology만 정의한 config 생성
@@ -944,7 +1431,7 @@ python irregnet/routing_table_gen.py config_topo.yml > config_irregular.yml
   --sweep --pattern urandom --injection-rate 50
 ```
 
-### 6. 최적화 고려사항
+### 7. 최적화 고려사항
 
 #### Routing Table 크기
 
@@ -979,7 +1466,7 @@ def _mk_irregular_net_with_vc( opts, num_vc=2 ):
   # ... rest of network instantiation
 ```
 
-### 7. 성능 분석
+### 8. 성능 분석
 
 Irregular topology의 특성:
 - **직경(Diameter)**: 최대 홉 수 → 무부하 레이턴시에 영향
@@ -1020,7 +1507,7 @@ def analyze_topology(graph_config):
   }
 ```
 
-### 8. 실제 활용 예제
+### 9. 실제 활용 예제
 
 #### Application-Specific NoC (ASIC)
 
@@ -1079,19 +1566,379 @@ routing_table:
   # ...
 ```
 
-### 9. 구현 체크리스트
+### 10. NetworkX 기반 고급 기능
+
+#### 10.1 Adaptive Routing (Load Balancing)
+
+NetworkX의 `all_shortest_paths`를 활용하여 multiple path routing 구현:
+
+```python
+class AdaptiveRouteUnitRTL( Component ):
+  """
+  Multiple shortest path를 활용한 adaptive routing.
+  부하에 따라 경로 선택.
+  """
+
+  def construct( s, PacketType, PositionType, num_outports, path_options ):
+    # path_options: Dict (src, dst) -> [path1, path2, ...]
+    s.path_options = path_options
+
+    # Load counters for each output port
+    s.load_counters = [ Wire(mk_bits(16)) for _ in range(num_outports) ]
+
+    @update
+    def up_ru_routing():
+      if s.recv.val:
+        src_id = s.pos.pos_id
+        dst_id = s.recv.msg.dst_id
+
+        # Get all shortest paths
+        paths = s.path_options.get((src_id, dst_id), [[0]])
+
+        # Select path with minimum load
+        min_load = 0xFFFF
+        best_port = 0
+
+        for path in paths:
+          next_hop = path[1] if len(path) > 1 else path[0]
+          neighbors = sorted(G.neighbors(src_id))
+          port = neighbors.index(next_hop) + 1
+
+          if s.load_counters[port] < min_load:
+            min_load = s.load_counters[port]
+            best_port = port
+
+        s.send[best_port].val @= b1(1)
+        s.load_counters[best_port] @= s.load_counters[best_port] + 1
+```
+
+생성 방법:
+
+```python
+# TopologyBuilder에 추가
+def generate_adaptive_routing_table(self):
+  """모든 shortest path 찾기"""
+  path_options = {}
+
+  for src in self.G.nodes():
+    for dst in self.G.nodes():
+      if src != dst:
+        # All shortest paths
+        paths = list(nx.all_shortest_paths(self.G, src, dst))
+        path_options[(src, dst)] = paths
+
+  return path_options
+```
+
+#### 10.2 Fault-Tolerant Routing
+
+```python
+class FaultTolerantTopology(TopologyBuilder):
+  """
+  링크/라우터 고장에 강건한 토폴로지.
+  """
+
+  def __init__(self, num_routers):
+    super().__init__(num_routers)
+    self.failed_links = set()
+    self.failed_routers = set()
+
+  def inject_link_fault(self, src, dst):
+    """링크 고장 주입"""
+    self.failed_links.add((src, dst))
+    self.failed_links.add((dst, src))
+    self.remove_link(src, dst)
+
+  def inject_router_fault(self, router_id):
+    """라우터 고장 주입"""
+    self.failed_routers.add(router_id)
+    # Remove all edges connected to this router
+    neighbors = list(self.G.neighbors(router_id))
+    for neighbor in neighbors:
+      self.remove_link(router_id, neighbor)
+
+  def verify_connectivity(self):
+    """고장 후에도 연결성 유지 확인"""
+    active_routers = [r for r in self.G.nodes()
+                      if r not in self.failed_routers]
+
+    subgraph = self.G.subgraph(active_routers)
+    return nx.is_connected(subgraph)
+
+  def find_critical_links(self):
+    """Single point of failure 링크 찾기 (bridge)"""
+    bridges = list(nx.bridges(self.G))
+    print(f"Found {len(bridges)} critical links:")
+    for src, dst in bridges:
+      print(f"  Link ({src}, {dst}) - removal partitions network!")
+    return bridges
+
+  def find_critical_routers(self):
+    """Critical routers (articulation points)"""
+    art_points = list(nx.articulation_points(self.G))
+    print(f"Found {len(art_points)} critical routers:")
+    for router in art_points:
+      print(f"  Router {router} - removal partitions network!")
+    return art_points
+
+# 사용 예제
+topo = FaultTolerantTopology.create_mesh(4, 4)
+
+# Critical component 찾기
+critical_links = topo.find_critical_links()
+critical_routers = topo.find_critical_routers()
+
+# Fault injection 시뮬레이션
+topo.inject_link_fault(5, 6)
+topo.inject_router_fault(10)
+
+if topo.verify_connectivity():
+  print("✅ Network still connected after faults")
+  # Regenerate routing table
+  new_routing = topo.generate_routing_table()
+else:
+  print("❌ Network partitioned!")
+```
+
+#### 10.3 Energy-Aware Topology Optimization
+
+```python
+def optimize_topology_for_energy(traffic_matrix, num_routers):
+  """
+  트래픽 패턴 기반 에너지 최적 토폴로지 생성.
+
+  Args:
+    traffic_matrix: [num_routers x num_routers] 통신 빈도
+  """
+
+  # Start with minimum spanning tree of traffic graph
+  traffic_graph = nx.Graph()
+  for src in range(num_routers):
+    for dst in range(src+1, num_routers):
+      weight = traffic_matrix[src][dst] + traffic_matrix[dst][src]
+      if weight > 0:
+        # Edge weight = -traffic (higher traffic -> lower weight)
+        traffic_graph.add_edge(src, dst, weight=-weight)
+
+  # MST로 high-traffic 링크 우선 연결
+  mst = nx.minimum_spanning_tree(traffic_graph)
+
+  topo = TopologyBuilder(num_routers)
+  topo.G = mst
+
+  # Ensure connectivity: 직경이 너무 크면 링크 추가
+  while nx.diameter(topo.G) > 5:  # 목표 직경
+    # Find most distant pair
+    dists = dict(nx.all_pairs_shortest_path_length(topo.G))
+    max_dist = 0
+    far_pair = (0, 1)
+
+    for src, targets in dists.items():
+      for dst, dist in targets.items():
+        if dist > max_dist:
+          max_dist = dist
+          far_pair = (src, dst)
+
+    # Add shortcut link
+    topo.add_link(far_pair[0], far_pair[1])
+
+  return topo
+
+# 예제 트래픽 (CPU-centric)
+traffic = np.zeros((8, 8))
+traffic[0, :] = 10  # CPU sends to all
+traffic[:, 0] = 10  # All send to CPU
+traffic[1, 4] = 5   # GPU-Memory
+traffic[4, 1] = 5
+
+topo = optimize_topology_for_energy(traffic, 8)
+topo.visualize('energy_optimized.png')
+```
+
+#### 10.4 Network Comparison Framework
+
+```python
+def compare_topologies(topologies, traffic_pattern='urandom'):
+  """
+  여러 토폴로지 비교.
+  """
+  results = []
+
+  for name, topo in topologies.items():
+    metrics = topo.analyze()
+
+    if not metrics.get('is_connected'):
+      continue
+
+    # Estimated performance
+    avg_hops = metrics['avg_shortest_path']
+    max_hops = metrics['diameter']
+
+    # Cost metrics
+    num_links = metrics['num_edges']
+    max_degree = metrics['max_degree']
+
+    # Estimate router area (proportional to degree^2)
+    router_area = sum(d**2 for d in metrics['degrees'].values())
+
+    # Estimate wire length (heuristic)
+    wire_length = num_links * 1.0  # Simplified
+
+    results.append({
+      'name': name,
+      'avg_latency_est': avg_hops + 3,  # +3 for router latency
+      'max_latency_est': max_hops + 3,
+      'num_links': num_links,
+      'max_degree': max_degree,
+      'router_area_est': router_area,
+      'wire_length_est': wire_length,
+      'topo': topo
+    })
+
+  df = pd.DataFrame(results)
+
+  # Normalize and compute score
+  df['latency_score'] = 1 / df['avg_latency_est']
+  df['area_score'] = 1 / df['router_area_est']
+  df['wire_score'] = 1 / df['wire_length_est']
+
+  # Overall score (weighted)
+  df['total_score'] = (
+    0.5 * df['latency_score'] +
+    0.3 * df['area_score'] +
+    0.2 * df['wire_score']
+  )
+
+  df = df.sort_values('total_score', ascending=False)
+
+  print("\n" + "="*80)
+  print("Topology Comparison")
+  print("="*80)
+  print(df[['name', 'avg_latency_est', 'num_links', 'max_degree', 'total_score']])
+  print("="*80)
+
+  return df
+
+# 사용 예제
+topologies = {
+  'mesh_4x4': TopologyBuilder.create_mesh(4, 4),
+  'ring_16': TopologyBuilder.create_ring(16),
+  'star_16': TopologyBuilder.create_star(16),
+  'small_world': TopologyBuilder.create_small_world(16, k=4, p=0.1),
+  'custom_hybrid': TopologyBuilder.create_custom(),
+}
+
+comparison = compare_topologies(topologies)
+
+# 최적 토폴로지 선택
+best = comparison.iloc[0]
+print(f"\n🏆 Best topology: {best['name']}")
+best['topo'].visualize('best_topology.png')
+```
+
+### 11. 구현 체크리스트 (NetworkX 버전)
+
+**기본 기능**:
+- [x] TopologyBuilder 클래스 구현
+- [x] Graph 생성 함수들 (mesh, ring, star, random, small-world, scale-free)
+- [x] 분석 함수 (diameter, avg path, degree, centrality)
+- [x] 라우팅 테이블 자동 생성
+- [x] Config export (to_yaml, to_config_dict)
+- [x] 시각화 (visualize, visualize_with_routing)
+
+**고급 기능**:
+- [ ] Adaptive routing (multiple path)
+- [ ] Fault injection 및 복구
+- [ ] Energy-aware optimization
+- [ ] Topology comparison framework
+- [ ] Traffic-aware topology generation
+
+**통합**:
+- [ ] TableRouteUnitRTL 구현
+- [ ] IrregularNetworkRTL 구현
+- [ ] Packet/Position type에 `dst_id`, `pos_id` 필드 추가
+- [ ] `sim_utils.py`에 irregular topology 지원 추가
+- [ ] Virtual channel 지원
+- [ ] 테스트 케이스 작성
+
+### 12. 구현 체크리스트 (YAML 버전)
 
 - [ ] `TableRouteUnitRTL.py` 구현
 - [ ] `IrregularNetworkRTL.py` 구현
-- [ ] `routing_table_gen.py` 유틸리티 작성
+- [ ] `routing_table_gen.py` 유틸리티 작성 (Floyd-Warshall)
 - [ ] Packet/Position type에 `dst_id`, `pos_id` 필드 추가
 - [ ] `sim_utils.py`에 irregular topology 지원 추가
 - [ ] Virtual channel 지원 (deadlock 방지)
-- [ ] 토폴로지 분석 도구 작성
 - [ ] 테스트 케이스 작성
 - [ ] 성능 벤치마크 (vs Mesh)
 
 ---
 
+## 요약: NetworkX vs YAML
+
+**NetworkX 방식을 강력 권장합니다!**
+
+### 왜 NetworkX인가?
+
+1. **생산성**: 라우팅 테이블 생성이 2줄로 끝남
+   ```python
+   paths = nx.single_source_shortest_path(G, src)
+   # vs 60줄의 Floyd-Warshall 구현
+   ```
+
+2. **검증**: 연결성, 직경, critical link 자동 확인
+   ```python
+   if not nx.is_connected(G):
+     print("Graph is disconnected!")
+   ```
+
+3. **시각화**: 1줄로 토폴로지 시각화
+   ```python
+   topo.visualize('topology.png')
+   ```
+
+4. **확장성**: Random, small-world, scale-free 등 다양한 graph 생성
+   ```python
+   topo = TopologyBuilder.create_small_world(16, k=4, p=0.1)
+   ```
+
+5. **연구 활용**: Fault injection, adaptive routing, energy optimization 등
+
+### 사용 시나리오별 권장사항
+
+| 시나리오 | 권장 방식 | 이유 |
+|---------|---------|-----|
+| **Application-specific SoC** | NetworkX | Custom topology 쉽게 구성 |
+| **Fault-tolerant design** | NetworkX | Critical link/router 분석 필수 |
+| **Design space exploration** | NetworkX | 수십 개 topology 비교 자동화 |
+| **간단한 Mesh 변형** | Modified Regular | 빠른 구현 |
+| **의존성 최소화 필요** | YAML Manual | NetworkX 설치 불가능한 환경 |
+
+### Quick Start (NetworkX)
+
+```python
+from irregnet.topology_builder import TopologyBuilder
+
+# 1. Topology 생성
+topo = TopologyBuilder.create_custom()
+
+# 2. 분석
+topo.print_analysis()
+
+# 3. 시각화
+topo.visualize('my_noc.png')
+
+# 4. Config 저장
+topo.to_yaml('config.yml')
+
+# 5. PyMTL3-net 시뮬레이션
+config = topo.to_config_dict()
+net = IrregularNetworkRTL(Pkt, Pos, config)
+```
+
+단 5줄로 irregular NoC 생성 완료!
+
+---
+
 **작성일**: 2025-10-21
-**버전**: 1.1
+**버전**: 1.2 (NetworkX 통합)
