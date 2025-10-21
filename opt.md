@@ -538,39 +538,225 @@ for i in range( s.num_routers ):
 
 ### 2. Irregular Topology 구현 전략
 
-#### 전략 1: NetworkX Graph 구조체 활용 (최고 권장) ⭐⭐
+#### 전략 1: YAML/JSON + NetworkX 통합 워크플로우 (최고 권장) ⭐⭐⭐
+
+**핵심 아이디어**:
+1. **YAML/JSON**에 graph를 간단히 기술 (edge list 형식)
+2. **NetworkX**로 파싱하여 분석/처리
+3. **자동으로** 라우팅 테이블 생성
+4. **PyMTL3-net** config로 변환하여 시뮬레이션
+
+```
+YAML/JSON (저장/공유)
+    ↓ parse
+NetworkX Graph (분석/처리)
+    ↓ generate_routing_table()
+PyMTL3-net Config (시뮬레이션)
+```
 
 **장점**:
-- Graph 알고리즘 즉시 사용 가능 (shortest path, diameter, etc.)
-- 토폴로지 시각화 간편
-- Graph 생성 함수 활용 (random, small-world, scale-free)
-- 검증 기능 내장 (연결성, acyclic 체크 등)
+- Graph를 텍스트로 간단히 기술 (버전 관리 가능)
+- NetworkX 알고리즘 활용 (shortest path, diameter, etc.)
+- 자동 라우팅 테이블 생성
+- 시각화 및 검증 가능
 
 **단점**: NetworkX 의존성 추가
 
 ##### Step 0: NetworkX 설치
 
 ```bash
-pip install networkx matplotlib
+pip install networkx matplotlib pyyaml
 ```
 
-##### Step 1: Graph 기반 Topology Builder
+##### Step 1: YAML/JSON Graph 형식 정의
+
+**간단한 edge list 형식**으로 graph 기술:
+
+```yaml
+# config_graph.yml
+
+network: 'Irregular'
+num_routers: 8
+
+# Edge list (무방향 그래프, 자동으로 양방향 생성)
+graph:
+  edges:
+    - [0, 1]  # CPU - GPU
+    - [0, 2]  # CPU - MC0
+    - [0, 3]  # CPU - MC1
+    - [2, 3]  # MC0 - MC1
+    - [3, 4]  # MC1 - Router4
+    - [4, 6]  # Router4 - Router6
+    - [6, 7]  # Router6 - Router7
+    - [7, 5]  # Router7 - Router5
+    - [5, 2]  # Router5 - MC0 (ring closure)
+
+# Optional: Router names (for documentation)
+router_names:
+  0: "CPU"
+  1: "GPU"
+  2: "MC0"
+  3: "MC1"
+  4: "Router4"
+  5: "Router5"
+  6: "Router6"
+  7: "Router7"
+
+# Optional: Performance requirements
+constraints:
+  max_diameter: 5
+  min_connectivity: 2  # Edge connectivity
+```
+
+**JSON 형식** (프로그래밍 언어와 통합 시):
+
+```json
+{
+  "network": "Irregular",
+  "num_routers": 8,
+  "graph": {
+    "edges": [
+      [0, 1], [0, 2], [0, 3],
+      [2, 3], [3, 4], [4, 6],
+      [6, 7], [7, 5], [5, 2]
+    ]
+  },
+  "router_names": {
+    "0": "CPU", "1": "GPU",
+    "2": "MC0", "3": "MC1"
+  }
+}
+```
+
+##### Step 2: YAML/JSON → NetworkX 파서
+
+```python
+# irregnet/graph_parser.py (신규 파일)
+
+import networkx as nx
+from ruamel.yaml import YAML
+import json
+
+def load_graph_from_yaml(filename):
+  """
+  YAML 파일에서 NetworkX graph 로드.
+
+  Returns:
+    G: NetworkX Graph
+    config: 원본 config dict
+  """
+  yaml = YAML(typ='safe')
+  config = yaml.load(open(filename))
+
+  num_routers = config['num_routers']
+  edges = config['graph']['edges']
+
+  # Create graph
+  G = nx.Graph()
+  G.add_nodes_from(range(num_routers))
+  G.add_edges_from(edges)
+
+  # Add metadata
+  if 'router_names' in config:
+    for router_id, name in config['router_names'].items():
+      G.nodes[int(router_id)]['name'] = name
+
+  return G, config
+
+def load_graph_from_json(filename):
+  """JSON 파일에서 NetworkX graph 로드."""
+  with open(filename) as f:
+    config = json.load(f)
+
+  num_routers = config['num_routers']
+  edges = config['graph']['edges']
+
+  G = nx.Graph()
+  G.add_nodes_from(range(num_routers))
+  G.add_edges_from(edges)
+
+  if 'router_names' in config:
+    for router_id, name in config['router_names'].items():
+      G.nodes[int(router_id)]['name'] = name
+
+  return G, config
+
+def save_graph_to_yaml(G, filename, metadata=None):
+  """NetworkX graph를 YAML로 저장."""
+  config = {
+    'network': 'Irregular',
+    'num_routers': G.number_of_nodes(),
+    'graph': {
+      'edges': list(G.edges())
+    }
+  }
+
+  # Add node names if available
+  router_names = {}
+  for node in G.nodes():
+    if 'name' in G.nodes[node]:
+      router_names[node] = G.nodes[node]['name']
+
+  if router_names:
+    config['router_names'] = router_names
+
+  if metadata:
+    config.update(metadata)
+
+  yaml = YAML()
+  yaml.dump(config, open(filename, 'w'))
+  print(f"✅ Graph saved to {filename}")
+```
+
+##### Step 3: Graph 기반 Topology Builder
 
 ```python
 # irregnet/topology_builder.py (신규 파일)
 
 import networkx as nx
 import matplotlib.pyplot as plt
+from .graph_parser import load_graph_from_yaml, save_graph_to_yaml
 
 class TopologyBuilder:
   """
   NetworkX를 활용한 NoC 토폴로지 생성 및 분석.
   """
 
-  def __init__(self, num_routers):
-    self.num_routers = num_routers
-    self.G = nx.Graph()
-    self.G.add_nodes_from(range(num_routers))
+  def __init__(self, num_routers=None, graph=None):
+    """
+    생성자.
+
+    Args:
+      num_routers: 라우터 수 (새 그래프 생성 시)
+      graph: 기존 NetworkX Graph (로드 시)
+    """
+    if graph is not None:
+      self.G = graph
+      self.num_routers = graph.number_of_nodes()
+    else:
+      self.num_routers = num_routers
+      self.G = nx.Graph()
+      self.G.add_nodes_from(range(num_routers))
+
+  # === YAML/JSON 로드 ===
+
+  @staticmethod
+  def from_yaml(filename):
+    """YAML 파일에서 topology 로드."""
+    from .graph_parser import load_graph_from_yaml
+    G, config = load_graph_from_yaml(filename)
+    builder = TopologyBuilder(graph=G)
+    builder.config = config
+    return builder
+
+  @staticmethod
+  def from_json(filename):
+    """JSON 파일에서 topology 로드."""
+    from .graph_parser import load_graph_from_json
+    G, config = load_graph_from_json(filename)
+    builder = TopologyBuilder(graph=G)
+    builder.config = config
+    return builder
 
   # === 토폴로지 생성 함수들 ===
 
@@ -866,33 +1052,146 @@ class TopologyBuilder:
       plt.show()
 ```
 
-##### Step 2: 사용 예제
+##### Step 4: 완전한 워크플로우 예제
 
 ```python
-# examples/irregular_networkx_example.py
+# examples/irregular_workflow.py
 
 from irregnet.topology_builder import TopologyBuilder
 
-# === 방법 1: 기존 토폴로지 생성 함수 사용 ===
+# ========================================
+# 워크플로우 1: YAML에서 로드 → 분석 → 시뮬레이션
+# ========================================
 
-# Small-world network (높은 clustering, 짧은 평균 거리)
+# 1. YAML 파일에서 graph 로드
+topo = TopologyBuilder.from_yaml('config_graph.yml')
+
+# 2. Graph 검증 및 분석
+topo.print_analysis()
+# Output:
+# ============================================================
+# Topology Analysis
+# ============================================================
+# Num routers:      8
+# Diameter:         4 hops
+# Avg path length:  2.14 hops
+# Max degree:       3
+# Top bottleneck: Router 0 (CPU) - centrality 0.429
+# ============================================================
+
+# 3. Constraints 검증
+constraints = topo.config.get('constraints', {})
+metrics = topo.analyze()
+
+if metrics['diameter'] > constraints.get('max_diameter', 999):
+  print(f"❌ Diameter {metrics['diameter']} exceeds max {constraints['max_diameter']}")
+else:
+  print(f"✅ Diameter constraint satisfied")
+
+# 4. 시각화
+topo.visualize('loaded_topology.png')
+
+# 5. 라우팅 테이블 자동 생성
+routing_table = topo.generate_routing_table()
+
+# 6. PyMTL3-net config로 변환
+config = topo.to_config_dict()
+
+# 7. 시뮬레이션
+from irregnet.IrregularNetworkRTL import IrregularNetworkRTL
+from pymtl3_net.ocnlib.ifcs.packets import mk_generic_pkt
+from pymtl3_net.ocnlib.ifcs.positions import mk_id_pos
+
+Pos = mk_id_pos(topo.num_routers)
+Pkt = mk_generic_pkt(topo.num_routers, payload_nbits=32)
+
+net = IrregularNetworkRTL(Pkt, Pos, config)
+net.elaborate()
+net.apply(DefaultPassGroup())
+
+# ========================================
+# 워크플로우 2: Python에서 생성 → YAML 저장
+# ========================================
+
+# 1. 기존 generator 사용 또는 수동 생성
 topo = TopologyBuilder.create_small_world(num_routers=16, k=4, p=0.1)
 
-# === 방법 2: Custom topology ===
-
-topo = TopologyBuilder.create_custom()
-
-# === 방법 3: 수동으로 구성 ===
-
+# OR 수동 구성
 topo = TopologyBuilder(num_routers=8)
-# CPU hub
 topo.add_link(0, 1)  # CPU-GPU
 topo.add_link(0, 2)  # CPU-MC0
 topo.add_link(0, 3)  # CPU-MC1
-# Memory ring
-for i in range(2, 7):
-  topo.add_link(i, i+1)
-topo.add_link(7, 2)  # Close ring
+# ...
+
+# 2. 분석 및 최적화
+if topo.analyze()['diameter'] > 5:
+  # Diameter가 너무 크면 shortcut 추가
+  topo.add_link(1, 7)  # GPU-Router7 shortcut
+
+# 3. YAML로 저장 (버전 관리, 공유)
+topo.to_yaml('my_optimized_topology.yml')
+
+# 4. 나중에 재사용
+topo2 = TopologyBuilder.from_yaml('my_optimized_topology.yml')
+
+# ========================================
+# 워크플로우 3: Design Space Exploration
+# ========================================
+
+import pandas as pd
+
+results = []
+
+# 여러 YAML 파일 테스트
+for yaml_file in ['topology_v1.yml', 'topology_v2.yml', 'topology_v3.yml']:
+  topo = TopologyBuilder.from_yaml(yaml_file)
+  metrics = topo.analyze()
+
+  if not metrics.get('is_connected'):
+    continue
+
+  results.append({
+    'file': yaml_file,
+    'diameter': metrics['diameter'],
+    'avg_path': metrics['avg_shortest_path'],
+    'num_links': metrics['num_edges'],
+    'max_degree': metrics['max_degree'],
+  })
+
+df = pd.DataFrame(results)
+df['score'] = 1/df['diameter'] + 1/df['num_links']  # 낮은 latency, 적은 링크
+df = df.sort_values('score', ascending=False)
+
+print("Topology Comparison:")
+print(df)
+
+# 최적 topology 선택
+best_file = df.iloc[0]['file']
+best_topo = TopologyBuilder.from_yaml(best_file)
+print(f"\n🏆 Best topology: {best_file}")
+
+# ========================================
+# 워크플로우 4: 기존 topology 수정
+# ========================================
+
+# 1. 기존 Mesh 로드
+topo = TopologyBuilder.create_mesh(4, 4)
+
+# 2. YAML로 저장
+topo.to_yaml('mesh_4x4.yml')
+
+# 3. 수동으로 YAML 편집 (링크 추가/제거)
+# vim mesh_4x4.yml
+
+# 4. 수정된 버전 로드
+topo_modified = TopologyBuilder.from_yaml('mesh_4x4.yml')
+
+# 5. 비교
+original_metrics = topo.analyze()
+modified_metrics = topo_modified.analyze()
+
+print(f"Original diameter: {original_metrics['diameter']}")
+print(f"Modified diameter: {modified_metrics['diameter']}")
 
 # === 분석 ===
 
@@ -1874,71 +2173,222 @@ best['topo'].visualize('best_topology.png')
 
 ---
 
-## 요약: NetworkX vs YAML
+## 요약: YAML/JSON + NetworkX 통합 워크플로우
 
-**NetworkX 방식을 강력 권장합니다!**
+**YAML/JSON으로 graph 기술 + NetworkX로 처리하는 방식을 강력 권장합니다!**
 
-### 왜 NetworkX인가?
+### 왜 이 조합인가?
 
-1. **생산성**: 라우팅 테이블 생성이 2줄로 끝남
+#### YAML/JSON의 장점
+
+1. **간결한 표현**: Edge list만 기술
+   ```yaml
+   graph:
+     edges:
+       - [0, 1]
+       - [0, 2]
+       - [1, 3]
+   ```
+
+2. **버전 관리**: Git에서 diff 확인 가능
+   ```bash
+   git diff my_topology.yml
+   # +  - [5, 7]  # 새 링크 추가
+   ```
+
+3. **문서화**: Router 이름, constraints 포함
+   ```yaml
+   router_names:
+     0: "CPU"
+   constraints:
+     max_diameter: 5
+   ```
+
+4. **공유 및 재사용**: 팀원과 topology 공유
+
+#### NetworkX의 장점
+
+1. **자동 처리**: 라우팅 테이블 생성 2줄
    ```python
    paths = nx.single_source_shortest_path(G, src)
-   # vs 60줄의 Floyd-Warshall 구현
+   # vs 60줄의 Floyd-Warshall
    ```
 
-2. **검증**: 연결성, 직경, critical link 자동 확인
+2. **검증**: 연결성, critical link 자동 확인
    ```python
    if not nx.is_connected(G):
-     print("Graph is disconnected!")
+     print("❌ Disconnected!")
+   critical_links = list(nx.bridges(G))
    ```
 
-3. **시각화**: 1줄로 토폴로지 시각화
+3. **시각화**: 1줄로 topology 시각화
    ```python
-   topo.visualize('topology.png')
+   topo.visualize('noc.png')
    ```
 
-4. **확장성**: Random, small-world, scale-free 등 다양한 graph 생성
+4. **분석**: Diameter, centrality 등 50+ 알고리즘
    ```python
-   topo = TopologyBuilder.create_small_world(16, k=4, p=0.1)
+   metrics = topo.analyze()
+   # diameter, avg_path, betweenness, etc.
    ```
 
-5. **연구 활용**: Fault injection, adaptive routing, energy optimization 등
+5. **연구**: Fault injection, adaptive routing, DSE
+
+### 실제 워크플로우
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ 1. Topology 설계                                                 │
+├─────────────────────────────────────────────────────────────────┤
+│ Option A: YAML 직접 작성                                         │
+│   vim my_topology.yml                                           │
+│   graph:                                                        │
+│     edges: [[0,1], [1,2], ...]                                  │
+│                                                                 │
+│ Option B: Python으로 생성                                        │
+│   topo = TopologyBuilder.create_small_world(16)                 │
+│   topo.to_yaml('my_topology.yml')                               │
+└─────────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ 2. NetworkX로 분석                                               │
+├─────────────────────────────────────────────────────────────────┤
+│ topo = TopologyBuilder.from_yaml('my_topology.yml')             │
+│ topo.print_analysis()  # Diameter, centrality, etc.             │
+│ topo.visualize('noc.png')                                       │
+│                                                                 │
+│ # Constraints 검증                                               │
+│ if topo.analyze()['diameter'] > max_diameter:                   │
+│   topo.add_link(0, 15)  # Optimize                              │
+└─────────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ 3. PyMTL3-net으로 시뮬레이션                                      │
+├─────────────────────────────────────────────────────────────────┤
+│ config = topo.to_config_dict()  # 라우팅 테이블 자동 생성          │
+│ net = IrregularNetworkRTL(Pkt, Pos, config)                     │
+│ net.elaborate()                                                 │
+│ # Run simulation...                                             │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ### 사용 시나리오별 권장사항
 
-| 시나리오 | 권장 방식 | 이유 |
-|---------|---------|-----|
-| **Application-specific SoC** | NetworkX | Custom topology 쉽게 구성 |
-| **Fault-tolerant design** | NetworkX | Critical link/router 분석 필수 |
-| **Design space exploration** | NetworkX | 수십 개 topology 비교 자동화 |
-| **간단한 Mesh 변형** | Modified Regular | 빠른 구현 |
-| **의존성 최소화 필요** | YAML Manual | NetworkX 설치 불가능한 환경 |
+| 시나리오 | 접근 방법 | 워크플로우 |
+|---------|---------|-----------|
+| **Application-specific SoC** | YAML 작성 → NetworkX | YAML에 custom topology 기술 → 분석 → 시뮬레이션 |
+| **Fault-tolerant design** | NetworkX 생성 → YAML | NetworkX로 critical link 찾기 → YAML 저장 → 재사용 |
+| **Design space exploration** | 여러 YAML 비교 | 각 variant를 YAML로 저장 → NetworkX로 일괄 분석 |
+| **간단한 Mesh 변형** | Mesh 생성 → YAML 편집 | `create_mesh()` → `to_yaml()` → 수동 편집 |
+| **연구용 random topology** | NetworkX 생성 → YAML | `create_small_world()` → `to_yaml()` → 공유 |
 
-### Quick Start (NetworkX)
+### Quick Start: YAML → NetworkX → Simulation
+
+#### 방법 1: YAML 파일에서 시작 (권장)
+
+```yaml
+# my_topology.yml
+network: 'Irregular'
+num_routers: 8
+graph:
+  edges:
+    - [0, 1]  # CPU-GPU
+    - [0, 2]  # CPU-MC0
+    - [0, 3]  # CPU-MC1
+    - [2, 3]
+    - [3, 4]
+    - [4, 6]
+    - [6, 7]
+    - [7, 5]
+    - [5, 2]
+router_names:
+  0: "CPU"
+  1: "GPU"
+```
 
 ```python
 from irregnet.topology_builder import TopologyBuilder
 
-# 1. Topology 생성
-topo = TopologyBuilder.create_custom()
+# 1. YAML에서 로드
+topo = TopologyBuilder.from_yaml('my_topology.yml')
 
-# 2. 분석
+# 2. 분석 및 시각화
 topo.print_analysis()
+topo.visualize('noc.png')
 
-# 3. 시각화
-topo.visualize('my_noc.png')
-
-# 4. Config 저장
-topo.to_yaml('config.yml')
-
-# 5. PyMTL3-net 시뮬레이션
-config = topo.to_config_dict()
+# 3. PyMTL3-net으로 시뮬레이션
+config = topo.to_config_dict()  # 라우팅 테이블 자동 생성
 net = IrregularNetworkRTL(Pkt, Pos, config)
 ```
 
-단 5줄로 irregular NoC 생성 완료!
+#### 방법 2: Python에서 생성 → YAML 저장
+
+```python
+# 1. Python으로 topology 생성
+topo = TopologyBuilder.create_small_world(16, k=4, p=0.1)
+
+# 2. 분석 및 최적화
+topo.print_analysis()
+if topo.analyze()['diameter'] > 5:
+  topo.add_link(0, 15)  # Shortcut
+
+# 3. YAML로 저장 (버전 관리, 공유)
+topo.to_yaml('optimized.yml')
+```
+
+**핵심**: YAML이 저장 형식, NetworkX가 분석 도구!
 
 ---
 
 **작성일**: 2025-10-21
-**버전**: 1.2 (NetworkX 통합)
+**버전**: 1.3 (YAML/JSON + NetworkX 통합 워크플로우)
+
+---
+
+## 핵심 요약
+
+### Irregular Topology 구현 방법
+
+**권장**: YAML/JSON (저장) + NetworkX (처리)
+
+```yaml
+# Step 1: YAML로 graph 기술 (간단!)
+graph:
+  edges:
+    - [0, 1]
+    - [0, 2]
+    - [1, 3]
+```
+
+```python
+# Step 2: NetworkX로 분석 (강력!)
+topo = TopologyBuilder.from_yaml('my_topology.yml')
+topo.print_analysis()  # 자동 분석
+topo.visualize('noc.png')  # 시각화
+
+# Step 3: 시뮬레이션 (자동 라우팅 테이블)
+config = topo.to_config_dict()
+net = IrregularNetworkRTL(Pkt, Pos, config)
+```
+
+### 장점
+
+1. **YAML**: 간결, 버전 관리, 공유 가능
+2. **NetworkX**: 자동 분석, 검증, 시각화
+3. **통합**: 최소 노력으로 최대 기능
+
+### 파일 구조
+
+```
+project/
+├── topologies/
+│   ├── cpu_hub.yml          # Application-specific
+│   ├── mesh_4x4.yml         # Regular baseline
+│   └── optimized_v3.yml     # Optimized variant
+├── irregnet/
+│   ├── topology_builder.py  # NetworkX wrapper
+│   ├── graph_parser.py      # YAML ↔ NetworkX
+│   └── IrregularNetworkRTL.py
+└── examples/
+    └── irregular_workflow.py
+```
