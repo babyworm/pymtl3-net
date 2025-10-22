@@ -568,44 +568,166 @@ PyMTL3-net Config (시뮬레이션)
 pip install networkx matplotlib pyyaml
 ```
 
-##### Step 1: YAML/JSON Graph 형식 정의
+##### Step 1: YAML/JSON Graph 형식 정의 (Heterogeneous Nodes)
 
-**간단한 edge list 형식**으로 graph 기술:
+**실제 NoC는 다양한 node type으로 구성됩니다**:
+
+- **NIU (Network Interface Unit)**: 네트워크 접근 제공 (entry point)
+- **Router**: 패킷 라우팅
+- **N:1 Arbiter**: 여러 입력을 하나로 중재
+- **1:N Decoder**: 하나의 입력을 여러 출력으로 분배
+- **Width Converter**: 데이터 폭 변환 (예: 32-bit ↔ 64-bit)
+- **Clock Converter**: 클럭 도메인 크로싱 (CDC)
 
 ```yaml
-# config_graph.yml
+# config_heterogeneous_graph.yml
 
 network: 'Irregular'
-num_routers: 8
+num_nodes: 12  # Total nodes (not just routers)
 
-# Edge list (무방향 그래프, 자동으로 양방향 생성)
+# Node definitions with types and attributes
+nodes:
+  # Network Interface Units (entry points)
+  - id: 0
+    type: "NIU"
+    name: "CPU_NIU"
+    width: 64  # Data width in bits
+    clock_domain: "fast"  # Clock domain
+
+  - id: 1
+    type: "NIU"
+    name: "GPU_NIU"
+    width: 128
+    clock_domain: "fast"
+
+  - id: 2
+    type: "NIU"
+    name: "MC0_NIU"
+    width: 64
+    clock_domain: "slow"
+
+  # Routers
+  - id: 3
+    type: "Router"
+    name: "Router0"
+    width: 64
+    clock_domain: "fast"
+    num_ports: 5
+
+  - id: 4
+    type: "Router"
+    name: "Router1"
+    width: 64
+    clock_domain: "fast"
+    num_ports: 4
+
+  # Clock Domain Converters
+  - id: 5
+    type: "ClockConverter"
+    name: "CDC_0"
+    src_domain: "fast"
+    dst_domain: "slow"
+    width: 64
+
+  # Width Converters
+  - id: 6
+    type: "WidthConverter"
+    name: "WidthConv_0"
+    src_width: 128
+    dst_width: 64
+    clock_domain: "fast"
+
+  # Arbiters (N:1)
+  - id: 7
+    type: "Arbiter"
+    name: "Arb_0"
+    num_inputs: 3
+    width: 64
+    clock_domain: "fast"
+    policy: "round_robin"  # or "priority", "fair"
+
+  # Decoders (1:N)
+  - id: 8
+    type: "Decoder"
+    name: "Dec_0"
+    num_outputs: 4
+    width: 64
+    clock_domain: "fast"
+
+# Edge definitions with attributes
 graph:
   edges:
-    - [0, 1]  # CPU - GPU
-    - [0, 2]  # CPU - MC0
-    - [0, 3]  # CPU - MC1
-    - [2, 3]  # MC0 - MC1
-    - [3, 4]  # MC1 - Router4
-    - [4, 6]  # Router4 - Router6
-    - [6, 7]  # Router6 - Router7
-    - [7, 5]  # Router7 - Router5
-    - [5, 2]  # Router5 - MC0 (ring closure)
+    # NIU → Router connections
+    - src: 0  # CPU_NIU
+      dst: 3  # Router0
+      width: 64
+      latency: 1  # Cycles
 
-# Optional: Router names (for documentation)
-router_names:
-  0: "CPU"
-  1: "GPU"
-  2: "MC0"
-  3: "MC1"
-  4: "Router4"
-  5: "Router5"
-  6: "Router6"
-  7: "Router7"
+    - src: 1  # GPU_NIU
+      dst: 6  # WidthConverter (128→64)
+      width: 128
+      latency: 0
 
-# Optional: Performance requirements
+    - src: 6  # WidthConverter output
+      dst: 3  # Router0
+      width: 64
+      latency: 2
+
+    # Router → Clock Converter → Router
+    - src: 3  # Router0 (fast domain)
+      dst: 5  # ClockConverter
+      width: 64
+      latency: 1
+
+    - src: 5  # ClockConverter output
+      dst: 4  # Router1 (slow domain)
+      width: 64
+      latency: 3  # CDC latency
+
+    # Router → Decoder → Multiple NIUs
+    - src: 4  # Router1
+      dst: 8  # Decoder
+      width: 64
+      latency: 1
+
+    - src: 8  # Decoder output 0
+      dst: 2  # MC0_NIU
+      width: 64
+      latency: 1
+
+    # Arbiter example: Multiple sources → Router
+    - src: 0  # CPU_NIU
+      dst: 7  # Arbiter input 0
+      width: 64
+      latency: 0
+
+    - src: 1  # GPU_NIU (via converter)
+      dst: 7  # Arbiter input 1
+      width: 64
+      latency: 0
+
+    - src: 7  # Arbiter output
+      dst: 3  # Router0
+      width: 64
+      latency: 2  # Arbitration latency
+
+# Constraints and validation rules
 constraints:
-  max_diameter: 5
-  min_connectivity: 2  # Edge connectivity
+  # Network access must go through NIU
+  niu_entry_only: true
+
+  # Clock domain rules
+  clock_domains:
+    - name: "fast"
+      frequency: 2000  # MHz
+    - name: "slow"
+      frequency: 1000  # MHz
+
+  # Width matching
+  enforce_width_match: true  # Edges must have matching widths unless converter
+
+  # Maximum latency
+  max_end_to_end_latency: 20  # cycles
 ```
 
 **JSON 형식** (프로그래밍 언어와 통합 시):
@@ -613,22 +735,36 @@ constraints:
 ```json
 {
   "network": "Irregular",
-  "num_routers": 8,
+  "nodes": [
+    {
+      "id": 0,
+      "type": "NIU",
+      "name": "CPU_NIU",
+      "width": 64,
+      "clock_domain": "fast"
+    },
+    {
+      "id": 3,
+      "type": "Router",
+      "name": "Router0",
+      "width": 64,
+      "num_ports": 5
+    }
+  ],
   "graph": {
     "edges": [
-      [0, 1], [0, 2], [0, 3],
-      [2, 3], [3, 4], [4, 6],
-      [6, 7], [7, 5], [5, 2]
+      {
+        "src": 0,
+        "dst": 3,
+        "width": 64,
+        "latency": 1
+      }
     ]
-  },
-  "router_names": {
-    "0": "CPU", "1": "GPU",
-    "2": "MC0", "3": "MC1"
   }
 }
 ```
 
-##### Step 2: YAML/JSON → NetworkX 파서
+##### Step 2: YAML/JSON → NetworkX 파서 (Heterogeneous Nodes)
 
 ```python
 # irregnet/graph_parser.py (신규 파일)
@@ -637,75 +773,183 @@ import networkx as nx
 from ruamel.yaml import YAML
 import json
 
-def load_graph_from_yaml(filename):
+def load_heterogeneous_graph_from_yaml(filename):
   """
-  YAML 파일에서 NetworkX graph 로드.
+  Heterogeneous node를 가진 YAML에서 NetworkX graph 로드.
 
   Returns:
-    G: NetworkX Graph
+    G: NetworkX DiGraph (directed graph)
     config: 원본 config dict
   """
   yaml = YAML(typ='safe')
   config = yaml.load(open(filename))
 
-  num_routers = config['num_routers']
-  edges = config['graph']['edges']
+  # Create directed graph (edges have direction)
+  G = nx.DiGraph()
 
-  # Create graph
-  G = nx.Graph()
-  G.add_nodes_from(range(num_routers))
-  G.add_edges_from(edges)
+  # Add nodes with attributes
+  for node_def in config['nodes']:
+    node_id = node_def['id']
+    node_type = node_def['type']
 
-  # Add metadata
-  if 'router_names' in config:
-    for router_id, name in config['router_names'].items():
-      G.nodes[int(router_id)]['name'] = name
+    # Add node with all attributes
+    G.add_node(node_id, **node_def)
 
-  return G, config
+  # Add edges with attributes
+  for edge_def in config['graph']['edges']:
+    src = edge_def['src']
+    dst = edge_def['dst']
 
-def load_graph_from_json(filename):
-  """JSON 파일에서 NetworkX graph 로드."""
-  with open(filename) as f:
-    config = json.load(f)
-
-  num_routers = config['num_routers']
-  edges = config['graph']['edges']
-
-  G = nx.Graph()
-  G.add_nodes_from(range(num_routers))
-  G.add_edges_from(edges)
-
-  if 'router_names' in config:
-    for router_id, name in config['router_names'].items():
-      G.nodes[int(router_id)]['name'] = name
+    # Add edge with attributes (width, latency, etc.)
+    edge_attrs = {k: v for k, v in edge_def.items() if k not in ['src', 'dst']}
+    G.add_edge(src, dst, **edge_attrs)
 
   return G, config
 
-def save_graph_to_yaml(G, filename, metadata=None):
-  """NetworkX graph를 YAML로 저장."""
-  config = {
-    'network': 'Irregular',
-    'num_routers': G.number_of_nodes(),
-    'graph': {
-      'edges': list(G.edges())
-    }
-  }
+def validate_heterogeneous_graph(G, config):
+  """
+  Heterogeneous graph 검증.
 
-  # Add node names if available
-  router_names = {}
-  for node in G.nodes():
-    if 'name' in G.nodes[node]:
-      router_names[node] = G.nodes[node]['name']
+  Checks:
+  1. NIU entry point rule
+  2. Width matching
+  3. Clock domain compatibility
+  4. Node type compatibility
+  """
+  errors = []
+  warnings = []
 
-  if router_names:
-    config['router_names'] = router_names
+  # Get node types
+  node_types = nx.get_node_attributes(G, 'type')
 
-  if metadata:
-    config.update(metadata)
+  # 1. Check NIU entry point rule
+  if config.get('constraints', {}).get('niu_entry_only', False):
+    niu_nodes = [n for n, t in node_types.items() if t == 'NIU']
+
+    # All leaf nodes (no incoming edges) should be NIUs
+    for node in G.nodes():
+      if G.in_degree(node) == 0:  # No incoming edges
+        if node_types.get(node) != 'NIU':
+          errors.append(f"Node {node} ({node_types.get(node)}) has no incoming edges "
+                       f"but is not a NIU. Network access must be through NIU.")
+
+  # 2. Check width matching
+  if config.get('constraints', {}).get('enforce_width_match', False):
+    for src, dst, edge_data in G.edges(data=True):
+      src_width = G.nodes[src].get('width')
+      dst_width = G.nodes[dst].get('width')
+      edge_width = edge_data.get('width')
+
+      # Check if widths are compatible
+      if edge_width and src_width and edge_width != src_width:
+        # Allow if source is a WidthConverter
+        if G.nodes[src].get('type') != 'WidthConverter':
+          warnings.append(f"Edge ({src}→{dst}) width {edge_width} "
+                         f"!= source width {src_width}")
+
+      if edge_width and dst_width and edge_width != dst_width:
+        # Allow if destination is a WidthConverter
+        if G.nodes[dst].get('type') != 'WidthConverter':
+          warnings.append(f"Edge ({src}→{dst}) width {edge_width} "
+                         f"!= destination width {dst_width}")
+
+  # 3. Check clock domain crossings
+  for src, dst, edge_data in G.edges(data=True):
+    src_domain = G.nodes[src].get('clock_domain')
+    dst_domain = G.nodes[dst].get('clock_domain')
+
+    if src_domain and dst_domain and src_domain != dst_domain:
+      # Must have ClockConverter in between
+      if G.nodes[src].get('type') != 'ClockConverter' and \
+         G.nodes[dst].get('type') != 'ClockConverter':
+        errors.append(f"Clock domain crossing ({src}:{src_domain} → {dst}:{dst_domain}) "
+                     f"without ClockConverter")
+
+  # 4. Check node type specific rules
+  for node, node_data in G.nodes(data=True):
+    node_type = node_data.get('type')
+
+    if node_type == 'Arbiter':
+      # Arbiter must have num_inputs incoming edges
+      expected_inputs = node_data.get('num_inputs', 2)
+      actual_inputs = G.in_degree(node)
+      if actual_inputs != expected_inputs:
+        errors.append(f"Arbiter {node} expects {expected_inputs} inputs, "
+                     f"has {actual_inputs}")
+
+    elif node_type == 'Decoder':
+      # Decoder must have num_outputs outgoing edges
+      expected_outputs = node_data.get('num_outputs', 2)
+      actual_outputs = G.out_degree(node)
+      if actual_outputs != expected_outputs:
+        errors.append(f"Decoder {node} expects {expected_outputs} outputs, "
+                     f"has {actual_outputs}")
+
+    elif node_type == 'WidthConverter':
+      # WidthConverter must have exactly 1 input and 1 output
+      if G.in_degree(node) != 1 or G.out_degree(node) != 1:
+        errors.append(f"WidthConverter {node} must have exactly 1 input and 1 output")
+
+      # Check width conversion
+      src_width = node_data.get('src_width')
+      dst_width = node_data.get('dst_width')
+      if src_width and dst_width and src_width == dst_width:
+        warnings.append(f"WidthConverter {node} has same src/dst width ({src_width})")
+
+  return errors, warnings
+
+def save_heterogeneous_graph_to_yaml(G, filename, config_base=None):
+  """NetworkX heterogeneous graph를 YAML로 저장."""
+
+  config = config_base or {}
+  config['network'] = 'Irregular'
+  config['num_nodes'] = G.number_of_nodes()
+
+  # Export nodes with attributes
+  nodes = []
+  for node, node_data in G.nodes(data=True):
+    node_entry = {'id': node}
+    node_entry.update(node_data)
+    nodes.append(node_entry)
+
+  config['nodes'] = nodes
+
+  # Export edges with attributes
+  edges = []
+  for src, dst, edge_data in G.edges(data=True):
+    edge_entry = {'src': src, 'dst': dst}
+    edge_entry.update(edge_data)
+    edges.append(edge_entry)
+
+  config['graph'] = {'edges': edges}
 
   yaml = YAML()
   yaml.dump(config, open(filename, 'w'))
-  print(f"✅ Graph saved to {filename}")
+  print(f"✅ Heterogeneous graph saved to {filename}")
+
+# Convenience function
+def load_graph_from_yaml(filename):
+  """
+  YAML 파일에서 NetworkX graph 로드 (자동 감지).
+
+  Heterogeneous nodes가 있으면 DiGraph, 없으면 Graph 반환.
+  """
+  yaml = YAML(typ='safe')
+  config = yaml.load(open(filename))
+
+  # Check if heterogeneous (nodes section exists)
+  if 'nodes' in config:
+    return load_heterogeneous_graph_from_yaml(filename)
+  else:
+    # Homogeneous graph (backward compatibility)
+    num_routers = config['num_routers']
+    edges = config['graph']['edges']
+
+    G = nx.Graph()
+    G.add_nodes_from(range(num_routers))
+    G.add_edges_from(edges)
+
+    return G, config
 ```
 
 ##### Step 3: Graph 기반 Topology Builder
@@ -1052,12 +1296,239 @@ class TopologyBuilder:
       plt.show()
 ```
 
-##### Step 4: 완전한 워크플로우 예제
+##### Step 4: Heterogeneous NoC 사용 예제
 
 ```python
-# examples/irregular_workflow.py
+# examples/heterogeneous_noc_example.py
 
 from irregnet.topology_builder import TopologyBuilder
+from irregnet.graph_parser import (
+  load_heterogeneous_graph_from_yaml,
+  validate_heterogeneous_graph
+)
+
+# ========================================
+# 예제 1: Heterogeneous Graph 로드 및 검증
+# ========================================
+
+# 1. YAML에서 heterogeneous graph 로드
+G, config = load_heterogeneous_graph_from_yaml('config_heterogeneous_graph.yml')
+
+# 2. Graph 검증
+errors, warnings = validate_heterogeneous_graph(G, config)
+
+if errors:
+  print("❌ Validation errors:")
+  for err in errors:
+    print(f"  - {err}")
+else:
+  print("✅ Graph validation passed!")
+
+if warnings:
+  print("⚠️  Warnings:")
+  for warn in warnings:
+    print(f"  - {warn}")
+
+# 3. Node type별 통계
+from collections import Counter
+node_types = nx.get_node_attributes(G, 'type')
+type_counts = Counter(node_types.values())
+
+print("\nNode Type Distribution:")
+for node_type, count in type_counts.items():
+  print(f"  {node_type}: {count}")
+
+# 4. Clock domain 분석
+clock_domains = nx.get_node_attributes(G, 'clock_domain')
+domain_counts = Counter(clock_domains.values())
+
+print("\nClock Domain Distribution:")
+for domain, count in domain_counts.items():
+  print(f"  {domain}: {count} nodes")
+
+# 5. NIU entry point 확인
+niu_nodes = [n for n, t in node_types.items() if t == 'NIU']
+print(f"\nNIU Entry Points: {niu_nodes}")
+
+for niu in niu_nodes:
+  print(f"  {G.nodes[niu]['name']}: width={G.nodes[niu]['width']}")
+
+# ========================================
+# 예제 2: Path Analysis (NIU to NIU)
+# ========================================
+
+# Source NIU와 Destination NIU 간의 경로 찾기
+src_niu = 0  # CPU_NIU
+dst_niu = 2  # MC0_NIU
+
+if nx.has_path(G, src_niu, dst_niu):
+  path = nx.shortest_path(G, src_niu, dst_niu)
+
+  print(f"\nPath from {G.nodes[src_niu]['name']} to {G.nodes[dst_niu]['name']}:")
+  total_latency = 0
+
+  for i in range(len(path)-1):
+    src = path[i]
+    dst = path[i+1]
+
+    src_name = G.nodes[src]['name']
+    dst_name = G.nodes[dst]['name']
+    src_type = G.nodes[src]['type']
+    dst_type = G.nodes[dst]['type']
+
+    edge_data = G[src][dst]
+    latency = edge_data.get('latency', 0)
+    width = edge_data.get('width', 'N/A')
+
+    total_latency += latency
+
+    print(f"  [{src_type}] {src_name} --({width}b, {latency}cy)--> [{dst_type}] {dst_name}")
+
+  print(f"Total latency: {total_latency} cycles")
+else:
+  print(f"❌ No path from {src_niu} to {dst_niu}")
+
+# ========================================
+# 예제 3: Width/Clock Domain 변환 추적
+# ========================================
+
+def analyze_conversions(G):
+  """Width 및 Clock domain 변환 분석"""
+
+  width_converters = []
+  clock_converters = []
+
+  for node, node_data in G.nodes(data=True):
+    if node_data.get('type') == 'WidthConverter':
+      width_converters.append({
+        'node': node,
+        'name': node_data['name'],
+        'conversion': f"{node_data.get('src_width')} → {node_data.get('dst_width')} bits"
+      })
+
+    elif node_data.get('type') == 'ClockConverter':
+      clock_converters.append({
+        'node': node,
+        'name': node_data['name'],
+        'conversion': f"{node_data.get('src_domain')} → {node_data.get('dst_domain')}"
+      })
+
+  print("\nWidth Converters:")
+  for wc in width_converters:
+    print(f"  {wc['name']}: {wc['conversion']}")
+
+  print("\nClock Converters:")
+  for cc in clock_converters:
+    print(f"  {cc['name']}: {cc['conversion']}")
+
+analyze_conversions(G)
+
+# ========================================
+# 예제 4: Arbiter/Decoder 분석
+# ========================================
+
+def analyze_arbitration_points(G):
+  """Arbiter와 Decoder 분석"""
+
+  for node, node_data in G.nodes(data=True):
+    node_type = node_data.get('type')
+
+    if node_type == 'Arbiter':
+      num_inputs = G.in_degree(node)
+      policy = node_data.get('policy', 'unknown')
+      print(f"\nArbiter {node_data['name']}:")
+      print(f"  Policy: {policy}")
+      print(f"  Inputs: {num_inputs}")
+
+      # Show input sources
+      for pred in G.predecessors(node):
+        pred_name = G.nodes[pred]['name']
+        pred_type = G.nodes[pred]['type']
+        print(f"    ← [{pred_type}] {pred_name}")
+
+    elif node_type == 'Decoder':
+      num_outputs = G.out_degree(node)
+      print(f"\nDecoder {node_data['name']}:")
+      print(f"  Outputs: {num_outputs}")
+
+      # Show output destinations
+      for succ in G.successors(node):
+        succ_name = G.nodes[succ]['name']
+        succ_type = G.nodes[succ]['type']
+        print(f"    → [{succ_type}] {succ_name}")
+
+analyze_arbitration_points(G)
+
+# ========================================
+# 예제 5: 시각화 (Node type별 색상)
+# ========================================
+
+import matplotlib.pyplot as plt
+
+def visualize_heterogeneous_noc(G, filename=None):
+  """Heterogeneous NoC 시각화 (node type별 색상)"""
+
+  # Node type별 색상 매핑
+  type_colors = {
+    'NIU': '#FF6B6B',          # Red
+    'Router': '#4ECDC4',        # Teal
+    'Arbiter': '#FFD93D',       # Yellow
+    'Decoder': '#95E1D3',       # Mint
+    'WidthConverter': '#A8E6CF', # Light green
+    'ClockConverter': '#C7CEEA'  # Lavender
+  }
+
+  node_types = nx.get_node_attributes(G, 'type')
+  node_colors = [type_colors.get(node_types.get(node, 'Router'), '#CCCCCC')
+                 for node in G.nodes()]
+
+  # Layout
+  pos = nx.spring_layout(G, seed=42, k=2, iterations=50)
+
+  plt.figure(figsize=(16, 12))
+
+  # Draw nodes
+  nx.draw_networkx_nodes(G, pos,
+                        node_color=node_colors,
+                        node_size=1200,
+                        alpha=0.9)
+
+  # Draw labels with node type
+  labels = {}
+  for node in G.nodes():
+    name = G.nodes[node].get('name', f'N{node}')
+    node_type = G.nodes[node].get('type', '?')
+    labels[node] = f"{name}\n[{node_type}]"
+
+  nx.draw_networkx_labels(G, pos, labels, font_size=8, font_weight='bold')
+
+  # Draw edges with width indication
+  edge_widths = []
+  for u, v in G.edges():
+    edge_data = G[u][v]
+    width = edge_data.get('width', 64)
+    edge_widths.append(width / 32)  # Scale for visualization
+
+  nx.draw_networkx_edges(G, pos, width=edge_widths, alpha=0.6,
+                        edge_color='gray', arrows=True, arrowsize=20)
+
+  # Legend
+  from matplotlib.patches import Patch
+  legend_elements = [Patch(facecolor=color, label=node_type)
+                    for node_type, color in type_colors.items()]
+  plt.legend(handles=legend_elements, loc='upper left', fontsize=10)
+
+  plt.title("Heterogeneous NoC Topology", fontsize=16, fontweight='bold')
+  plt.axis('off')
+  plt.tight_layout()
+
+  if filename:
+    plt.savefig(filename, dpi=150, bbox_inches='tight')
+    print(f"✅ Visualization saved to {filename}")
+  else:
+    plt.show()
+
+visualize_heterogeneous_noc(G, 'heterogeneous_noc.png')
 
 # ========================================
 # 워크플로우 1: YAML에서 로드 → 분석 → 시뮬레이션
@@ -2349,7 +2820,9 @@ topo.to_yaml('optimized.yml')
 
 ### Irregular Topology 구현 방법
 
-**권장**: YAML/JSON (저장) + NetworkX (처리)
+**권장**: YAML/JSON (저장) + NetworkX (처리) + Heterogeneous Nodes
+
+#### 1. Homogeneous Graph (Router만)
 
 ```yaml
 # Step 1: YAML로 graph 기술 (간단!)
@@ -2360,22 +2833,87 @@ graph:
     - [1, 3]
 ```
 
-```python
-# Step 2: NetworkX로 분석 (강력!)
-topo = TopologyBuilder.from_yaml('my_topology.yml')
-topo.print_analysis()  # 자동 분석
-topo.visualize('noc.png')  # 시각화
+#### 2. Heterogeneous Graph (실제 NoC) ⭐
 
-# Step 3: 시뮬레이션 (자동 라우팅 테이블)
-config = topo.to_config_dict()
+```yaml
+# Step 1: Node types와 attributes 정의
+nodes:
+  - id: 0
+    type: "NIU"           # Network Interface Unit
+    width: 64
+    clock_domain: "fast"
+
+  - id: 1
+    type: "Router"
+    width: 64
+    num_ports: 5
+
+  - id: 2
+    type: "WidthConverter"
+    src_width: 128
+    dst_width: 64
+
+  - id: 3
+    type: "Arbiter"
+    num_inputs: 3
+    policy: "round_robin"
+
+# Step 2: Edges with attributes
+graph:
+  edges:
+    - src: 0
+      dst: 1
+      width: 64
+      latency: 1
+```
+
+```python
+# Step 3: NetworkX로 로드 및 검증 (강력!)
+G, config = load_heterogeneous_graph_from_yaml('my_noc.yml')
+
+# 자동 검증
+errors, warnings = validate_heterogeneous_graph(G, config)
+# ✅ NIU entry point rule
+# ✅ Width matching
+# ✅ Clock domain compatibility
+# ✅ Node type specific rules
+
+# 시각화 (node type별 색상)
+visualize_heterogeneous_noc(G, 'noc.png')
+
+# Step 4: 시뮬레이션
+config = convert_to_pymtl3_config(G)
 net = IrregularNetworkRTL(Pkt, Pos, config)
 ```
+
+### Node Types
+
+| Type | 역할 | Attributes |
+|------|-----|-----------|
+| **NIU** | 네트워크 접근 제공 (entry point) | width, clock_domain |
+| **Router** | 패킷 라우팅 | width, num_ports, clock_domain |
+| **Arbiter** | N→1 중재 | num_inputs, policy, width |
+| **Decoder** | 1→N 분배 | num_outputs, width |
+| **WidthConverter** | 데이터 폭 변환 | src_width, dst_width |
+| **ClockConverter** | 클럭 도메인 크로싱 | src_domain, dst_domain |
+
+### 검증 규칙
+
+1. **NIU Entry Point**: 네트워크 접근은 반드시 NIU를 통해야 함
+2. **Width Matching**: Edge width는 source/dest와 일치 (Converter 제외)
+3. **Clock Domain**: 다른 domain 간 연결 시 ClockConverter 필요
+4. **Node Type Rules**:
+   - Arbiter: `num_inputs`개 incoming edges
+   - Decoder: `num_outputs`개 outgoing edges
+   - Converter: 정확히 1 input, 1 output
 
 ### 장점
 
 1. **YAML**: 간결, 버전 관리, 공유 가능
 2. **NetworkX**: 자동 분석, 검증, 시각화
-3. **통합**: 최소 노력으로 최대 기능
+3. **Heterogeneous**: 실제 NoC 하드웨어 모델링
+4. **검증**: Width/clock domain 자동 체크
+5. **통합**: 최소 노력으로 최대 기능
 
 ### 파일 구조
 
