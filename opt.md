@@ -1,5 +1,14 @@
 # NoC 합성 최적화 방법론 (NoC Synthesis Optimization Methodology)
 
+**Version**: 1.5
+**Last Updated**: 2025-10-22
+**Changes in v1.5**:
+- Initiator/Target 노드 타입 추가 (8개 노드 타입으로 확장)
+- QoS requirements 지원 (throughput, latency, bandwidth constraints)
+- Bandwidth allocation 및 검증 기능
+- End-to-end latency 검증
+- QoS 분석 및 시각화 예제 추가
+
 ## 목차
 1. [개요](#개요)
 2. [NoC 합성 방식](#noc-합성-방식)
@@ -572,7 +581,9 @@ pip install networkx matplotlib pyyaml
 
 **실제 NoC는 다양한 node type으로 구성됩니다**:
 
-- **NIU (Network Interface Unit)**: 네트워크 접근 제공 (entry point)
+- **Initiator**: 트래픽을 생성하는 IP 블록 (CPU, GPU, DMA 등)
+- **Target**: 트래픽을 수신하는 IP 블록 (Memory, Peripheral 등)
+- **NIU (Network Interface Unit)**: 네트워크 접근 제공 (Initiator/Target과 Network 사이)
 - **Router**: 패킷 라우팅
 - **N:1 Arbiter**: 여러 입력을 하나로 중재
 - **1:N Decoder**: 하나의 입력을 여러 출력으로 분배
@@ -583,38 +594,66 @@ pip install networkx matplotlib pyyaml
 # config_heterogeneous_graph.yml
 
 network: 'Irregular'
-num_nodes: 12  # Total nodes (not just routers)
+num_nodes: 16  # Total nodes (Initiators, Targets, NIUs, Routers, Converters)
 
 # Node definitions with types and attributes
 nodes:
-  # Network Interface Units (entry points)
+  # Initiators (Traffic generators - IP blocks)
   - id: 0
+    type: "Initiator"
+    name: "CPU_Core0"
+    avg_throughput: 4.0      # GB/s (average requirement)
+    max_throughput: 8.0      # GB/s (peak requirement)
+    latency_requirement: 10  # cycles (max acceptable latency)
+    priority: 0              # 0=highest, higher number=lower priority
+    traffic_pattern: "bursty" # or "uniform", "streaming"
+
+  - id: 1
+    type: "Initiator"
+    name: "GPU"
+    avg_throughput: 16.0
+    max_throughput: 32.0
+    latency_requirement: 20
+    priority: 1
+    traffic_pattern: "streaming"
+
+  - id: 2
+    type: "Initiator"
+    name: "DMA"
+    avg_throughput: 2.0
+    max_throughput: 4.0
+    latency_requirement: 50
+    priority: 2
+    traffic_pattern: "bursty"
+
+  # Network Interface Units (connect Initiators/Targets to Network)
+  - id: 3
     type: "NIU"
     name: "CPU_NIU"
     width: 64  # Data width in bits
     clock_domain: "fast"  # Clock domain
 
-  - id: 1
+  - id: 4
     type: "NIU"
     name: "GPU_NIU"
     width: 128
     clock_domain: "fast"
 
-  - id: 2
+  - id: 5
     type: "NIU"
     name: "MC0_NIU"
     width: 64
     clock_domain: "slow"
 
   # Routers
-  - id: 3
+  - id: 6
     type: "Router"
     name: "Router0"
     width: 64
     clock_domain: "fast"
     num_ports: 5
 
-  - id: 4
+  - id: 7
     type: "Router"
     name: "Router1"
     width: 64
@@ -622,7 +661,7 @@ nodes:
     num_ports: 4
 
   # Clock Domain Converters
-  - id: 5
+  - id: 8
     type: "ClockConverter"
     name: "CDC_0"
     src_domain: "fast"
@@ -630,7 +669,7 @@ nodes:
     width: 64
 
   # Width Converters
-  - id: 6
+  - id: 9
     type: "WidthConverter"
     name: "WidthConv_0"
     src_width: 128
@@ -638,7 +677,7 @@ nodes:
     clock_domain: "fast"
 
   # Arbiters (N:1)
-  - id: 7
+  - id: 10
     type: "Arbiter"
     name: "Arb_0"
     num_inputs: 3
@@ -647,69 +686,137 @@ nodes:
     policy: "round_robin"  # or "priority", "fair"
 
   # Decoders (1:N)
-  - id: 8
+  - id: 11
     type: "Decoder"
     name: "Dec_0"
     num_outputs: 4
     width: 64
     clock_domain: "fast"
 
+  # Targets (Traffic receivers - IP blocks)
+  - id: 12
+    type: "Target"
+    name: "DDR4_Memory"
+    max_bandwidth: 25.6  # GB/s (hardware limit)
+    latency: 100         # cycles (access latency)
+    size: 8              # GB (memory size)
+    type_detail: "DRAM"
+
+  - id: 13
+    type: "Target"
+    name: "SRAM_Buffer"
+    max_bandwidth: 50.0
+    latency: 10
+    size: 0.5            # GB
+    type_detail: "SRAM"
+
+  - id: 14
+    type: "Target"
+    name: "PCIe_Device"
+    max_bandwidth: 16.0
+    latency: 200
+    size: null           # External device
+    type_detail: "Peripheral"
+
 # Edge definitions with attributes
 graph:
   edges:
-    # NIU → Router connections
-    - src: 0  # CPU_NIU
-      dst: 3  # Router0
+    # Initiator → NIU connections (entry to network)
+    - src: 0  # CPU_Core0
+      dst: 3  # CPU_NIU
       width: 64
-      latency: 1  # Cycles
+      latency: 1
 
-    - src: 1  # GPU_NIU
-      dst: 6  # WidthConverter (128→64)
+    - src: 1  # GPU
+      dst: 4  # GPU_NIU
+      width: 128
+      latency: 1
+
+    - src: 2  # DMA
+      dst: 3  # CPU_NIU (shared NIU)
+      width: 64
+      latency: 1
+
+    # NIU → Router connections
+    - src: 3  # CPU_NIU
+      dst: 6  # Router0
+      width: 64
+      latency: 1
+
+    - src: 4  # GPU_NIU
+      dst: 9  # WidthConverter (128→64)
       width: 128
       latency: 0
 
-    - src: 6  # WidthConverter output
-      dst: 3  # Router0
+    - src: 9  # WidthConverter output
+      dst: 6  # Router0
       width: 64
       latency: 2
 
     # Router → Clock Converter → Router
-    - src: 3  # Router0 (fast domain)
-      dst: 5  # ClockConverter
+    - src: 6  # Router0 (fast domain)
+      dst: 8  # ClockConverter
       width: 64
       latency: 1
 
-    - src: 5  # ClockConverter output
-      dst: 4  # Router1 (slow domain)
+    - src: 8  # ClockConverter output
+      dst: 7  # Router1 (slow domain)
       width: 64
       latency: 3  # CDC latency
 
     # Router → Decoder → Multiple NIUs
-    - src: 4  # Router1
-      dst: 8  # Decoder
+    - src: 7  # Router1
+      dst: 11  # Decoder
       width: 64
       latency: 1
 
-    - src: 8  # Decoder output 0
-      dst: 2  # MC0_NIU
+    - src: 11  # Decoder output 0
+      dst: 5  # MC0_NIU
       width: 64
       latency: 1
+
+    # NIU → Target connections (exit from network)
+    - src: 5  # MC0_NIU
+      dst: 12  # DDR4_Memory
+      width: 64
+      latency: 5
 
     # Arbiter example: Multiple sources → Router
-    - src: 0  # CPU_NIU
-      dst: 7  # Arbiter input 0
+    - src: 3  # CPU_NIU
+      dst: 10  # Arbiter input 0
       width: 64
       latency: 0
 
-    - src: 1  # GPU_NIU (via converter)
-      dst: 7  # Arbiter input 1
+    - src: 4  # GPU_NIU (via converter)
+      dst: 10  # Arbiter input 1
       width: 64
       latency: 0
 
-    - src: 7  # Arbiter output
-      dst: 3  # Router0
+    - src: 10  # Arbiter output
+      dst: 6  # Router0
       width: 64
       latency: 2  # Arbitration latency
+
+    # Additional paths for SRAM and PCIe
+    - src: 6  # Router0
+      dst: 5  # MC0_NIU (for SRAM)
+      width: 64
+      latency: 1
+
+    - src: 5  # MC0_NIU
+      dst: 13  # SRAM_Buffer
+      width: 64
+      latency: 2
+
+    - src: 7  # Router1
+      dst: 5  # MC0_NIU (for PCIe)
+      width: 64
+      latency: 1
+
+    - src: 5  # MC0_NIU
+      dst: 14  # PCIe_Device
+      width: 64
+      latency: 10
 
 # Constraints and validation rules
 constraints:
@@ -728,6 +835,38 @@ constraints:
 
   # Maximum latency
   max_end_to_end_latency: 20  # cycles
+
+  # QoS requirements: Bandwidth allocation between Initiator-Target pairs
+  bandwidth_allocation:
+    - initiator: 0        # CPU_Core0
+      target: 12          # DDR4_Memory
+      guaranteed_bw: 2.0  # GB/s (guaranteed minimum)
+      max_latency: 15     # cycles (SLA requirement)
+      priority: 0         # Highest priority
+
+    - initiator: 1        # GPU
+      target: 12          # DDR4_Memory
+      guaranteed_bw: 8.0
+      max_latency: 25
+      priority: 1
+
+    - initiator: 1        # GPU
+      target: 13          # SRAM_Buffer
+      guaranteed_bw: 16.0
+      max_latency: 15
+      priority: 0         # High priority for GPU-SRAM
+
+    - initiator: 2        # DMA
+      target: 14          # PCIe_Device
+      guaranteed_bw: 1.0
+      max_latency: 100
+      priority: 2         # Lower priority
+
+  # Bandwidth validation: Sum of guaranteed_bw to each target <= target max_bandwidth
+  validate_bandwidth: true
+
+  # Latency validation: End-to-end latency <= initiator latency_requirement
+  validate_latency: true
 ```
 
 **JSON 형식** (프로그래밍 언어와 통합 시):
@@ -895,6 +1034,101 @@ def validate_heterogeneous_graph(G, config):
       dst_width = node_data.get('dst_width')
       if src_width and dst_width and src_width == dst_width:
         warnings.append(f"WidthConverter {node} has same src/dst width ({src_width})")
+
+    elif node_type == 'Initiator':
+      # Initiator must connect to NIU (not directly to network)
+      if G.out_degree(node) == 0:
+        errors.append(f"Initiator {node} has no outgoing connections")
+      else:
+        for neighbor in G.neighbors(node):
+          neighbor_type = G.nodes[neighbor].get('type')
+          if neighbor_type != 'NIU':
+            errors.append(f"Initiator {node} connects to {neighbor} ({neighbor_type}), "
+                         f"but must connect to NIU")
+
+    elif node_type == 'Target':
+      # Target must receive from NIU (not directly from network)
+      if G.in_degree(node) == 0:
+        errors.append(f"Target {node} has no incoming connections")
+      else:
+        for predecessor in G.predecessors(node):
+          predecessor_type = G.nodes[predecessor].get('type')
+          if predecessor_type != 'NIU':
+            errors.append(f"Target {node} receives from {predecessor} ({predecessor_type}), "
+                         f"but must receive from NIU")
+
+  # 5. Bandwidth validation
+  if config.get('constraints', {}).get('validate_bandwidth', False):
+    bandwidth_allocations = config.get('constraints', {}).get('bandwidth_allocation', [])
+
+    # Group by target
+    target_bw_usage = {}
+    for alloc in bandwidth_allocations:
+      target_id = alloc['target']
+      guaranteed_bw = alloc.get('guaranteed_bw', 0)
+
+      if target_id not in target_bw_usage:
+        target_bw_usage[target_id] = 0
+      target_bw_usage[target_id] += guaranteed_bw
+
+    # Check against target max_bandwidth
+    for target_id, total_bw in target_bw_usage.items():
+      target_data = G.nodes.get(target_id)
+      if target_data:
+        max_bw = target_data.get('max_bandwidth')
+        target_name = target_data.get('name', f'Node{target_id}')
+
+        if max_bw and total_bw > max_bw:
+          errors.append(f"Target {target_name} ({target_id}): "
+                       f"Total guaranteed bandwidth {total_bw:.1f} GB/s "
+                       f"exceeds max bandwidth {max_bw:.1f} GB/s")
+        elif max_bw and total_bw > 0.9 * max_bw:
+          warnings.append(f"Target {target_name} ({target_id}): "
+                         f"Total guaranteed bandwidth {total_bw:.1f} GB/s "
+                         f"is {100*total_bw/max_bw:.0f}% of max bandwidth {max_bw:.1f} GB/s")
+
+  # 6. Latency validation (end-to-end paths)
+  if config.get('constraints', {}).get('validate_latency', False):
+    bandwidth_allocations = config.get('constraints', {}).get('bandwidth_allocation', [])
+
+    for alloc in bandwidth_allocations:
+      initiator_id = alloc['initiator']
+      target_id = alloc['target']
+      max_latency = alloc.get('max_latency')
+
+      # Find shortest path and calculate latency
+      if nx.has_path(G, initiator_id, target_id):
+        path = nx.shortest_path(G, initiator_id, target_id)
+
+        # Calculate total latency along path
+        total_latency = 0
+        for i in range(len(path) - 1):
+          src = path[i]
+          dst = path[i + 1]
+          edge_latency = G.edges[src, dst].get('latency', 0)
+          total_latency += edge_latency
+
+        # Add target access latency
+        target_data = G.nodes.get(target_id)
+        if target_data:
+          target_latency = target_data.get('latency', 0)
+          total_latency += target_latency
+
+        initiator_name = G.nodes[initiator_id].get('name', f'Node{initiator_id}')
+        target_name = G.nodes[target_id].get('name', f'Node{target_id}')
+
+        if max_latency and total_latency > max_latency:
+          errors.append(f"Path {initiator_name}→{target_name}: "
+                       f"Total latency {total_latency} cycles "
+                       f"exceeds requirement {max_latency} cycles")
+        elif max_latency and total_latency > 0.9 * max_latency:
+          warnings.append(f"Path {initiator_name}→{target_name}: "
+                         f"Total latency {total_latency} cycles "
+                         f"is {100*total_latency/max_latency:.0f}% of requirement {max_latency} cycles")
+      else:
+        initiator_name = G.nodes[initiator_id].get('name', f'Node{initiator_id}')
+        target_name = G.nodes[target_id].get('name', f'Node{target_id}')
+        errors.append(f"No path exists from {initiator_name} to {target_name}")
 
   return errors, warnings
 
@@ -1470,12 +1704,14 @@ def visualize_heterogeneous_noc(G, filename=None):
 
   # Node type별 색상 매핑
   type_colors = {
-    'NIU': '#FF6B6B',          # Red
-    'Router': '#4ECDC4',        # Teal
-    'Arbiter': '#FFD93D',       # Yellow
-    'Decoder': '#95E1D3',       # Mint
-    'WidthConverter': '#A8E6CF', # Light green
-    'ClockConverter': '#C7CEEA'  # Lavender
+    'Initiator': '#FF6B6B',     # Red
+    'Target': '#4ECDC4',        # Teal
+    'NIU': '#FFD93D',           # Yellow
+    'Router': '#95E1D3',        # Mint
+    'Arbiter': '#A8E6CF',       # Light green
+    'Decoder': '#F38181',       # Salmon
+    'WidthConverter': '#C7CEEA', # Lavender
+    'ClockConverter': '#FFEAA7'  # Light yellow
   }
 
   node_types = nx.get_node_attributes(G, 'type')
@@ -1529,6 +1765,222 @@ def visualize_heterogeneous_noc(G, filename=None):
     plt.show()
 
 visualize_heterogeneous_noc(G, 'heterogeneous_noc.png')
+
+# ========================================
+# 예제 6: QoS 검증 (Initiator/Target with Bandwidth/Latency)
+# ========================================
+
+def analyze_qos_requirements(G, config):
+  """QoS requirements 분석 및 검증"""
+
+  print("\n=== QoS Analysis ===\n")
+
+  # 1. Initiator requirements
+  print("Initiator Requirements:")
+  for node, node_data in G.nodes(data=True):
+    if node_data.get('type') == 'Initiator':
+      name = node_data.get('name')
+      avg_tp = node_data.get('avg_throughput', 0)
+      max_tp = node_data.get('max_throughput', 0)
+      lat_req = node_data.get('latency_requirement', 0)
+      priority = node_data.get('priority', '-')
+
+      print(f"  {name} (id={node}):")
+      print(f"    Avg Throughput: {avg_tp} GB/s")
+      print(f"    Max Throughput: {max_tp} GB/s")
+      print(f"    Latency Req: {lat_req} cycles")
+      print(f"    Priority: {priority}")
+
+  # 2. Target capabilities
+  print("\nTarget Capabilities:")
+  for node, node_data in G.nodes(data=True):
+    if node_data.get('type') == 'Target':
+      name = node_data.get('name')
+      max_bw = node_data.get('max_bandwidth', 0)
+      latency = node_data.get('latency', 0)
+      size = node_data.get('size', 'N/A')
+
+      print(f"  {name} (id={node}):")
+      print(f"    Max Bandwidth: {max_bw} GB/s")
+      print(f"    Latency: {latency} cycles")
+      print(f"    Size: {size} GB")
+
+  # 3. Bandwidth allocation check
+  bandwidth_allocations = config.get('constraints', {}).get('bandwidth_allocation', [])
+
+  print("\nBandwidth Allocations:")
+  target_bw_usage = {}
+
+  for alloc in bandwidth_allocations:
+    init_id = alloc['initiator']
+    tgt_id = alloc['target']
+    guaranteed_bw = alloc.get('guaranteed_bw', 0)
+    max_lat = alloc.get('max_latency', 0)
+    priority = alloc.get('priority', 0)
+
+    init_name = G.nodes[init_id].get('name')
+    tgt_name = G.nodes[tgt_id].get('name')
+
+    print(f"  {init_name} → {tgt_name}:")
+    print(f"    Guaranteed BW: {guaranteed_bw} GB/s")
+    print(f"    Max Latency: {max_lat} cycles")
+    print(f"    Priority: {priority}")
+
+    # Track total bandwidth per target
+    if tgt_id not in target_bw_usage:
+      target_bw_usage[tgt_id] = []
+    target_bw_usage[tgt_id].append({
+      'initiator': init_name,
+      'bw': guaranteed_bw
+    })
+
+  # 4. Check if targets are over-subscribed
+  print("\nTarget Bandwidth Utilization:")
+  for tgt_id, allocations in target_bw_usage.items():
+    tgt_name = G.nodes[tgt_id].get('name')
+    max_bw = G.nodes[tgt_id].get('max_bandwidth', 0)
+    total_bw = sum(a['bw'] for a in allocations)
+    utilization = (total_bw / max_bw * 100) if max_bw > 0 else 0
+
+    print(f"  {tgt_name}: {total_bw:.1f} / {max_bw:.1f} GB/s ({utilization:.1f}%)")
+
+    if total_bw > max_bw:
+      print(f"    ❌ ERROR: Over-subscribed by {total_bw - max_bw:.1f} GB/s")
+    elif total_bw > 0.9 * max_bw:
+      print(f"    ⚠️  WARNING: High utilization ({utilization:.0f}%)")
+    else:
+      print(f"    ✅ OK")
+
+  # 5. End-to-end latency check
+  print("\nEnd-to-End Latency Validation:")
+  for alloc in bandwidth_allocations:
+    init_id = alloc['initiator']
+    tgt_id = alloc['target']
+    max_lat = alloc.get('max_latency', 0)
+
+    init_name = G.nodes[init_id].get('name')
+    tgt_name = G.nodes[tgt_id].get('name')
+
+    if nx.has_path(G, init_id, tgt_id):
+      path = nx.shortest_path(G, init_id, tgt_id)
+
+      # Calculate network latency
+      network_lat = 0
+      for i in range(len(path) - 1):
+        edge_lat = G.edges[path[i], path[i+1]].get('latency', 0)
+        network_lat += edge_lat
+
+      # Add target access latency
+      target_lat = G.nodes[tgt_id].get('latency', 0)
+      total_lat = network_lat + target_lat
+
+      print(f"  {init_name} → {tgt_name}:")
+      print(f"    Network: {network_lat} cycles")
+      print(f"    Target access: {target_lat} cycles")
+      print(f"    Total: {total_lat} cycles (max: {max_lat} cycles)")
+
+      if total_lat > max_lat:
+        print(f"    ❌ ERROR: Exceeds requirement by {total_lat - max_lat} cycles")
+      elif total_lat > 0.9 * max_lat:
+        print(f"    ⚠️  WARNING: Near limit ({100*total_lat/max_lat:.0f}%)")
+      else:
+        print(f"    ✅ OK ({100*total_lat/max_lat:.0f}% of max)")
+    else:
+      print(f"  {init_name} → {tgt_name}: ❌ No path exists")
+
+analyze_qos_requirements(G, config)
+
+# ========================================
+# 예제 7: QoS 시각화 (Initiator-Target 경로 강조)
+# ========================================
+
+def visualize_qos_path(G, initiator_id, target_id, filename=None):
+  """Initiator에서 Target까지의 경로 시각화"""
+
+  # Node type별 색상 (Initiator/Target 추가)
+  type_colors = {
+    'Initiator': '#FF6B6B',     # Red
+    'Target': '#4ECDC4',        # Teal
+    'NIU': '#FFD93D',           # Yellow
+    'Router': '#95E1D3',        # Mint
+    'Arbiter': '#A8E6CF',       # Light green
+    'Decoder': '#F38181',       # Salmon
+    'WidthConverter': '#C7CEEA', # Lavender
+    'ClockConverter': '#FFEAA7'  # Light yellow
+  }
+
+  node_types = nx.get_node_attributes(G, 'type')
+
+  plt.figure(figsize=(16, 12))
+  pos = nx.spring_layout(G, seed=42, k=2, iterations=50)
+
+  # Find path
+  if nx.has_path(G, initiator_id, target_id):
+    path = nx.shortest_path(G, initiator_id, target_id)
+  else:
+    path = []
+
+  # Draw all nodes
+  for node in G.nodes():
+    node_type = node_types.get(node, 'Router')
+    color = type_colors.get(node_type, '#CCCCCC')
+
+    # Highlight nodes in path
+    size = 2000 if node in path else 1200
+    alpha = 1.0 if node in path else 0.5
+
+    nx.draw_networkx_nodes(G, pos, nodelist=[node],
+                          node_color=color, node_size=size, alpha=alpha)
+
+  # Draw labels
+  labels = {}
+  for node in G.nodes():
+    name = G.nodes[node].get('name', f'N{node}')
+    node_type = G.nodes[node].get('type', '?')
+    labels[node] = f"{name}\n[{node_type}]"
+
+  nx.draw_networkx_labels(G, pos, labels, font_size=8, font_weight='bold')
+
+  # Draw edges
+  edge_widths = []
+  edge_colors = []
+  for u, v in G.edges():
+    # Highlight path edges
+    if len(path) > 1 and any((u == path[i] and v == path[i+1]) for i in range(len(path)-1)):
+      edge_widths.append(4.0)
+      edge_colors.append('red')
+    else:
+      width = G[u][v].get('width', 64)
+      edge_widths.append(width / 32)
+      edge_colors.append('gray')
+
+  nx.draw_networkx_edges(G, pos, width=edge_widths, alpha=0.6,
+                        edge_color=edge_colors, arrows=True, arrowsize=20)
+
+  # Legend
+  from matplotlib.patches import Patch
+  legend_elements = [Patch(facecolor=color, label=node_type)
+                    for node_type, color in type_colors.items()]
+  plt.legend(handles=legend_elements, loc='upper left', fontsize=10)
+
+  init_name = G.nodes[initiator_id].get('name')
+  tgt_name = G.nodes[target_id].get('name')
+  plt.title(f"QoS Path: {init_name} → {tgt_name} ({len(path)-1} hops)",
+           fontsize=16, fontweight='bold')
+  plt.axis('off')
+  plt.tight_layout()
+
+  if filename:
+    plt.savefig(filename, dpi=150, bbox_inches='tight')
+    print(f"✅ QoS path visualization saved to {filename}")
+  else:
+    plt.show()
+
+# Visualize QoS path: CPU_Core0 → DDR4_Memory
+visualize_qos_path(G, 0, 12, 'qos_path_cpu_to_ddr4.png')
+
+# Visualize QoS path: GPU → SRAM_Buffer
+visualize_qos_path(G, 1, 13, 'qos_path_gpu_to_sram.png')
 
 # ========================================
 # 워크플로우 1: YAML에서 로드 → 분석 → 시뮬레이션
