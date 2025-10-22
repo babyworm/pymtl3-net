@@ -1,0 +1,355 @@
+# Small-scale Example 6: Smart Home Hub
+# 8 Initiators, 3 Targets
+# Use case: Voice-controlled smart home assistant
+
+network: 'Irregular'
+num_nodes: 21
+
+nodes:
+  # === Initiators (8) ===
+  - id: 0
+    type: "Initiator"
+    name: "Quad_Core_CPU"
+    avg_throughput: 3.0
+    max_throughput: 6.0
+    latency_requirement: 30
+    priority: 0
+    traffic_pattern: "bursty"
+
+  - id: 1
+    type: "Initiator"
+    name: "Audio_DSP"
+    avg_throughput: 1.5
+    max_throughput: 3.0
+    latency_requirement: 20
+    priority: 0
+    traffic_pattern: "streaming"
+
+  - id: 2
+    type: "Initiator"
+    name: "Voice_NPU"
+    avg_throughput: 2.0
+    max_throughput: 4.0
+    latency_requirement: 40
+    priority: 1
+    traffic_pattern: "bursty"
+
+  - id: 3
+    type: "Initiator"
+    name: "WiFi6_Controller"
+    avg_throughput: 4.0
+    max_throughput: 8.0
+    latency_requirement: 50
+    priority: 1
+    traffic_pattern: "bursty"
+
+  - id: 4
+    type: "Initiator"
+    name: "Zigbee_Controller"
+    avg_throughput: 0.5
+    max_throughput: 1.0
+    latency_requirement: 60
+    priority: 2
+    traffic_pattern: "uniform"
+
+  - id: 5
+    type: "Initiator"
+    name: "Thread_Controller"
+    avg_throughput: 0.3
+    max_throughput: 0.6
+    latency_requirement: 70
+    priority: 2
+    traffic_pattern: "uniform"
+
+  - id: 6
+    type: "Initiator"
+    name: "Display_Engine"
+    avg_throughput: 1.0
+    max_throughput: 2.0
+    latency_requirement: 35
+    priority: 1
+    traffic_pattern: "streaming"
+
+  - id: 7
+    type: "Initiator"
+    name: "Crypto_Accelerator"
+    avg_throughput: 0.8
+    max_throughput: 1.6
+    latency_requirement: 80
+    priority: 2
+    traffic_pattern: "bursty"
+
+  # === NIUs (8) ===
+  - id: 8
+    type: "NIU"
+    name: "CPU_NIU"
+    width: 64
+    clock_domain: "fast"
+
+  - id: 9
+    type: "NIU"
+    name: "Audio_NIU"
+    width: 64
+    clock_domain: "fast"
+
+  - id: 10
+    type: "NIU"
+    name: "NPU_NIU"
+    width: 64
+    clock_domain: "fast"
+
+  - id: 11
+    type: "NIU"
+    name: "WiFi_NIU"
+    width: 64
+    clock_domain: "fast"
+
+  - id: 12
+    type: "NIU"
+    name: "Zigbee_NIU"
+    width: 32
+    clock_domain: "slow"
+
+  - id: 13
+    type: "NIU"
+    name: "Thread_NIU"
+    width: 32
+    clock_domain: "slow"
+
+  - id: 14
+    type: "NIU"
+    name: "Display_NIU"
+    width: 32
+    clock_domain: "fast"
+
+  - id: 15
+    type: "NIU"
+    name: "Crypto_NIU"
+    width: 32
+    clock_domain: "slow"
+
+  # === Routers (3) ===
+  - id: 16
+    type: "Router"
+    name: "Main_Router"
+    width: 64
+    clock_domain: "fast"
+    num_ports: 5
+
+  - id: 17
+    type: "Router"
+    name: "IoT_Router"
+    width: 32
+    clock_domain: "slow"
+    num_ports: 3
+
+  - id: 18
+    type: "Router"
+    name: "Memory_Router"
+    width: 64
+    clock_domain: "fast"
+    num_ports: 3
+
+  # === Arbiter (1) ===
+  - id: 19
+    type: "Arbiter"
+    name: "Audio_Arbiter"
+    num_inputs: 2
+    width: 64
+    clock_domain: "fast"
+    policy: "priority"
+
+  # === Targets (3) ===
+  - id: 20
+    type: "Target"
+    name: "DDR3_RAM"
+    max_bandwidth: 12.8
+    latency: 90
+    size: 2
+    type_detail: "DRAM"
+
+  - id: 21
+    type: "Target"
+    name: "Audio_Buffer"
+    max_bandwidth: 10.0
+    latency: 5
+    size: 0.016
+    type_detail: "SRAM"
+
+  - id: 22
+    type: "Target"
+    name: "eMMC_Storage"
+    max_bandwidth: 0.4
+    latency: 300
+    size: 32
+    type_detail: "eMMC"
+
+graph:
+  edges:
+    # Initiator → NIU
+    - src: 0
+      dst: 8
+      width: 64
+      latency: 1
+
+    - src: 1
+      dst: 9
+      width: 64
+      latency: 1
+
+    - src: 2
+      dst: 10
+      width: 64
+      latency: 1
+
+    - src: 3
+      dst: 11
+      width: 64
+      latency: 1
+
+    - src: 4
+      dst: 12
+      width: 32
+      latency: 1
+
+    - src: 5
+      dst: 13
+      width: 32
+      latency: 1
+
+    - src: 6
+      dst: 14
+      width: 32
+      latency: 1
+
+    - src: 7
+      dst: 15
+      width: 32
+      latency: 1
+
+    # Audio path → Arbiter
+    - src: 9
+      dst: 19
+      width: 64
+      latency: 1
+
+    - src: 10
+      dst: 19
+      width: 64
+      latency: 1
+
+    - src: 19
+      dst: 16
+      width: 64
+      latency: 2
+
+    # Main components → Main Router
+    - src: 8
+      dst: 16
+      width: 64
+      latency: 1
+
+    - src: 11
+      dst: 16
+      width: 64
+      latency: 1
+
+    - src: 14
+      dst: 16
+      width: 32
+      latency: 1
+
+    # IoT protocols → IoT Router
+    - src: 12
+      dst: 17
+      width: 32
+      latency: 1
+
+    - src: 13
+      dst: 17
+      width: 32
+      latency: 1
+
+    - src: 15
+      dst: 17
+      width: 32
+      latency: 1
+
+    # Routers → Memory Router
+    - src: 16
+      dst: 18
+      width: 64
+      latency: 1
+
+    - src: 17
+      dst: 18
+      width: 32
+      latency: 2
+
+    # Memory Router → Targets
+    - src: 18
+      dst: 20
+      width: 64
+      latency: 3
+
+    - src: 18
+      dst: 21
+      width: 64
+      latency: 2
+
+    - src: 18
+      dst: 22
+      width: 64
+      latency: 8
+
+constraints:
+  niu_entry_only: true
+
+  clock_domains:
+    - name: "fast"
+      frequency: 1200
+    - name: "slow"
+      frequency: 400
+
+  enforce_width_match: false
+  max_end_to_end_latency: 350
+
+  bandwidth_allocation:
+    - initiator: 1
+      target: 21
+      guaranteed_bw: 1.5
+      max_latency: 30
+      priority: 0
+
+    - initiator: 2
+      target: 20
+      guaranteed_bw: 2.0
+      max_latency: 55
+      priority: 1
+
+    - initiator: 0
+      target: 20
+      guaranteed_bw: 3.0
+      max_latency: 45
+      priority: 0
+
+    - initiator: 3
+      target: 20
+      guaranteed_bw: 4.0
+      max_latency: 65
+      priority: 1
+
+    - initiator: 6
+      target: 20
+      guaranteed_bw: 1.0
+      max_latency: 50
+      priority: 1
+
+    - initiator: 7
+      target: 22
+      guaranteed_bw: 0.3
+      max_latency: 330
+      priority: 2
+
+  validate_bandwidth: true
+  validate_latency: true
