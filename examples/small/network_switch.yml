@@ -1,357 +1,295 @@
-# Small-scale Example 9: Network Switch
-# 8 Initiators, 3 Targets
-# Use case: Enterprise 8-port managed switch with QoS
-
-network: 'Irregular'
-num_nodes: 21
-
+network: Irregular
+num_nodes: 24
 nodes:
-  # === Initiators (8) ===
-  - id: 0
-    type: "Initiator"
-    name: "Port0_RX"
-    avg_throughput: 1.25
-    max_throughput: 2.5
-    latency_requirement: 10
-    priority: 0
-    traffic_pattern: "bursty"
-
-  - id: 1
-    type: "Initiator"
-    name: "Port1_RX"
-    avg_throughput: 1.25
-    max_throughput: 2.5
-    latency_requirement: 10
-    priority: 0
-    traffic_pattern: "bursty"
-
-  - id: 2
-    type: "Initiator"
-    name: "Port2_RX"
-    avg_throughput: 1.25
-    max_throughput: 2.5
-    latency_requirement: 10
-    priority: 0
-    traffic_pattern: "bursty"
-
-  - id: 3
-    type: "Initiator"
-    name: "Port3_RX"
-    avg_throughput: 1.25
-    max_throughput: 2.5
-    latency_requirement: 10
-    priority: 0
-    traffic_pattern: "bursty"
-
-  - id: 4
-    type: "Initiator"
-    name: "Port4_RX"
-    avg_throughput: 1.25
-    max_throughput: 2.5
-    latency_requirement: 10
-    priority: 1
-    traffic_pattern: "bursty"
-
-  - id: 5
-    type: "Initiator"
-    name: "Port5_RX"
-    avg_throughput: 1.25
-    max_throughput: 2.5
-    latency_requirement: 10
-    priority: 1
-    traffic_pattern: "bursty"
-
-  - id: 6
-    type: "Initiator"
-    name: "Port6_RX"
-    avg_throughput: 1.25
-    max_throughput: 2.5
-    latency_requirement: 10
-    priority: 1
-    traffic_pattern: "bursty"
-
-  - id: 7
-    type: "Initiator"
-    name: "Mgmt_CPU"
-    avg_throughput: 0.5
-    max_throughput: 1.0
-    latency_requirement: 50
-    priority: 2
-    traffic_pattern: "bursty"
-
-  # === NIUs (8) ===
-  - id: 8
-    type: "NIU"
-    name: "Port0_NIU"
-    width: 64
-    clock_domain: "fast"
-
-  - id: 9
-    type: "NIU"
-    name: "Port1_NIU"
-    width: 64
-    clock_domain: "fast"
-
-  - id: 10
-    type: "NIU"
-    name: "Port2_NIU"
-    width: 64
-    clock_domain: "fast"
-
-  - id: 11
-    type: "NIU"
-    name: "Port3_NIU"
-    width: 64
-    clock_domain: "fast"
-
-  - id: 12
-    type: "NIU"
-    name: "Port4_NIU"
-    width: 64
-    clock_domain: "fast"
-
-  - id: 13
-    type: "NIU"
-    name: "Port5_NIU"
-    width: 64
-    clock_domain: "fast"
-
-  - id: 14
-    type: "NIU"
-    name: "Port6_NIU"
-    width: 64
-    clock_domain: "fast"
-
-  - id: 15
-    type: "NIU"
-    name: "CPU_NIU"
-    width: 32
-    clock_domain: "slow"
-
-  # === Routers (2) ===
-  - id: 16
-    type: "Router"
-    name: "Switching_Fabric"
-    width: 64
-    clock_domain: "fast"
-    num_ports: 5
-
-  - id: 17
-    type: "Router"
-    name: "Memory_Router"
-    width: 64
-    clock_domain: "fast"
-    num_ports: 3
-
-  # === Arbiter (1) ===
-  - id: 18
-    type: "Arbiter"
-    name: "Packet_Arbiter"
-    num_inputs: 4
-    width: 64
-    clock_domain: "fast"
-    policy: "priority"
-
-  # === Decoder (1) ===
-  - id: 19
-    type: "Decoder"
-    name: "Port_Decoder"
-    num_outputs: 4
-    width: 64
-    clock_domain: "fast"
-
-  # === Targets (3) ===
-  - id: 20
-    type: "Target"
-    name: "Packet_Buffer"
-    max_bandwidth: 20.0
-    latency: 5
-    size: 0.256
-    type_detail: "SRAM"
-
-  - id: 21
-    type: "Target"
-    name: "Routing_Table"
-    max_bandwidth: 10.0
-    latency: 3
-    size: 0.016
-    type_detail: "TCAM"
-
-  - id: 22
-    type: "Target"
-    name: "Stats_Memory"
-    max_bandwidth: 2.0
-    latency: 8
-    size: 0.004
-    type_detail: "SRAM"
-
+- id: 0
+  type: Initiator
+  name: Port0_RX
+  avg_throughput: 1.25
+  max_throughput: 2.5
+  latency_requirement: 10
+  priority: 0
+  traffic_pattern: bursty
+- id: 1
+  type: Initiator
+  name: Port1_RX
+  avg_throughput: 1.25
+  max_throughput: 2.5
+  latency_requirement: 10
+  priority: 0
+  traffic_pattern: bursty
+- id: 2
+  type: Initiator
+  name: Port2_RX
+  avg_throughput: 1.25
+  max_throughput: 2.5
+  latency_requirement: 10
+  priority: 0
+  traffic_pattern: bursty
+- id: 3
+  type: Initiator
+  name: Port3_RX
+  avg_throughput: 1.25
+  max_throughput: 2.5
+  latency_requirement: 10
+  priority: 0
+  traffic_pattern: bursty
+- id: 4
+  type: Initiator
+  name: Port4_RX
+  avg_throughput: 1.25
+  max_throughput: 2.5
+  latency_requirement: 10
+  priority: 1
+  traffic_pattern: bursty
+- id: 5
+  type: Initiator
+  name: Port5_RX
+  avg_throughput: 1.25
+  max_throughput: 2.5
+  latency_requirement: 10
+  priority: 1
+  traffic_pattern: bursty
+- id: 6
+  type: Initiator
+  name: Port6_RX
+  avg_throughput: 1.25
+  max_throughput: 2.5
+  latency_requirement: 10
+  priority: 1
+  traffic_pattern: bursty
+- id: 7
+  type: Initiator
+  name: Mgmt_CPU
+  avg_throughput: 0.5
+  max_throughput: 1.0
+  latency_requirement: 50
+  priority: 2
+  traffic_pattern: bursty
+- id: 8
+  type: NIU
+  name: Port0_NIU
+  width: 64
+  clock_domain: fast
+- id: 9
+  type: NIU
+  name: Port1_NIU
+  width: 64
+  clock_domain: fast
+- id: 10
+  type: NIU
+  name: Port2_NIU
+  width: 64
+  clock_domain: fast
+- id: 11
+  type: NIU
+  name: Port3_NIU
+  width: 64
+  clock_domain: fast
+- id: 12
+  type: NIU
+  name: Port4_NIU
+  width: 64
+  clock_domain: fast
+- id: 13
+  type: NIU
+  name: Port5_NIU
+  width: 64
+  clock_domain: fast
+- id: 14
+  type: NIU
+  name: Port6_NIU
+  width: 64
+  clock_domain: fast
+- id: 15
+  type: NIU
+  name: CPU_NIU
+  width: 32
+  clock_domain: slow
+- id: 16
+  type: Router
+  name: Switching_Fabric
+  width: 64
+  clock_domain: fast
+  num_ports: 6
+- id: 17
+  type: Router
+  name: Memory_Router
+  width: 64
+  clock_domain: fast
+  num_ports: 4
+- id: 18
+  type: Arbiter
+  name: Packet_Arbiter
+  num_inputs: 4
+  width: 64
+  clock_domain: fast
+  policy: priority
+- id: 19
+  type: Decoder
+  name: Port_Decoder
+  num_outputs: 4
+  width: 64
+  clock_domain: fast
+- id: 21
+  type: ClockConverter
+  name: CPU_NIU_Switching_Fabric_CDC
+  width: 32
+  src_clock_domain: slow
+  dst_clock_domain: fast
+- id: 20
+  type: Target
+  name: Packet_Buffer
+  max_bandwidth: 20.0
+  latency: 5
+  size: 0.256
+  type_detail: SRAM
+- id: 21
+  type: Target
+  name: Routing_Table
+  max_bandwidth: 10.0
+  latency: 3
+  size: 0.016
+  type_detail: TCAM
+- id: 22
+  type: Target
+  name: Stats_Memory
+  max_bandwidth: 2.0
+  latency: 8
+  size: 0.004
+  type_detail: SRAM
 graph:
   edges:
-    # Initiator → NIU
-    - src: 0
-      dst: 8
-      width: 64
-      latency: 1
-
-    - src: 1
-      dst: 9
-      width: 64
-      latency: 1
-
-    - src: 2
-      dst: 10
-      width: 64
-      latency: 1
-
-    - src: 3
-      dst: 11
-      width: 64
-      latency: 1
-
-    - src: 4
-      dst: 12
-      width: 64
-      latency: 1
-
-    - src: 5
-      dst: 13
-      width: 64
-      latency: 1
-
-    - src: 6
-      dst: 14
-      width: 64
-      latency: 1
-
-    - src: 7
-      dst: 15
-      width: 32
-      latency: 1
-
-    # High priority ports → Packet Arbiter
-    - src: 8
-      dst: 18
-      width: 64
-      latency: 1
-
-    - src: 9
-      dst: 18
-      width: 64
-      latency: 1
-
-    - src: 10
-      dst: 18
-      width: 64
-      latency: 1
-
-    - src: 11
-      dst: 18
-      width: 64
-      latency: 1
-
-    - src: 18
-      dst: 16
-      width: 64
-      latency: 2
-
-    # Normal priority ports → Switching Fabric
-    - src: 12
-      dst: 16
-      width: 64
-      latency: 1
-
-    - src: 13
-      dst: 16
-      width: 64
-      latency: 1
-
-    - src: 14
-      dst: 16
-      width: 64
-      latency: 1
-
-    # CPU → Switching Fabric
-    - src: 15
-      dst: 16
-      width: 32
-      latency: 2
-
-    # Switching Fabric → Decoder
-    - src: 16
-      dst: 19
-      width: 64
-      latency: 1
-
-    # Decoder → Memory Router
-    - src: 19
-      dst: 17
-      width: 64
-      latency: 1
-
-    # Memory Router → Targets
-    - src: 17
-      dst: 20
-      width: 64
-      latency: 1
-
-    - src: 17
-      dst: 21
-      width: 64
-      latency: 1
-
-    - src: 17
-      dst: 22
-      width: 64
-      latency: 1
-
+  - src: 0
+    dst: 8
+    width: 64
+    latency: 1
+  - src: 1
+    dst: 9
+    width: 64
+    latency: 1
+  - src: 2
+    dst: 10
+    width: 64
+    latency: 1
+  - src: 3
+    dst: 11
+    width: 64
+    latency: 1
+  - src: 4
+    dst: 12
+    width: 64
+    latency: 1
+  - src: 5
+    dst: 13
+    width: 64
+    latency: 1
+  - src: 6
+    dst: 14
+    width: 64
+    latency: 1
+  - src: 7
+    dst: 15
+    width: 32
+    latency: 1
+  - src: 8
+    dst: 18
+    width: 64
+    latency: 1
+  - src: 9
+    dst: 18
+    width: 64
+    latency: 1
+  - src: 10
+    dst: 18
+    width: 64
+    latency: 1
+  - src: 11
+    dst: 18
+    width: 64
+    latency: 1
+  - src: 18
+    dst: 16
+    width: 64
+    latency: 2
+  - src: 12
+    dst: 16
+    width: 64
+    latency: 1
+  - src: 13
+    dst: 16
+    width: 64
+    latency: 1
+  - src: 14
+    dst: 16
+    width: 64
+    latency: 1
+  - src: 15
+    dst: 21
+    width: 32
+    latency: 1
+  - src: 21
+    dst: 16
+    width: 32
+    latency: 2
+  - src: 16
+    dst: 19
+    width: 64
+    latency: 1
+  - src: 19
+    dst: 17
+    width: 64
+    latency: 1
+  - src: 17
+    dst: 20
+    width: 64
+    latency: 1
+  - src: 17
+    dst: 21
+    width: 64
+    latency: 1
+  - src: 17
+    dst: 22
+    width: 64
+    latency: 1
 constraints:
-  niu_entry_only: true
-
+  niu_entry_only: false
   clock_domains:
-    - name: "fast"
-      frequency: 625
-    - name: "slow"
-      frequency: 200
-
+  - name: fast
+    frequency: 625
+  - name: slow
+    frequency: 200
   enforce_width_match: false
   max_end_to_end_latency: 30
-
   bandwidth_allocation:
-    - initiator: 0
-      target: 20
-      guaranteed_bw: 1.0
-      max_latency: 12
-      priority: 0
-
-    - initiator: 1
-      target: 20
-      guaranteed_bw: 1.0
-      max_latency: 12
-      priority: 0
-
-    - initiator: 2
-      target: 21
-      guaranteed_bw: 0.8
-      max_latency: 10
-      priority: 0
-
-    - initiator: 3
-      target: 21
-      guaranteed_bw: 0.8
-      max_latency: 10
-      priority: 0
-
-    - initiator: 4
-      target: 20
-      guaranteed_bw: 1.0
-      max_latency: 14
-      priority: 1
-
-    - initiator: 7
-      target: 22
-      guaranteed_bw: 0.5
-      max_latency: 65
-      priority: 2
-
+  - initiator: 0
+    target: 20
+    guaranteed_bw: 1.0
+    max_latency: 12
+    priority: 0
+  - initiator: 1
+    target: 20
+    guaranteed_bw: 1.0
+    max_latency: 12
+    priority: 0
+  - initiator: 2
+    target: 21
+    guaranteed_bw: 0.8
+    max_latency: 10
+    priority: 0
+  - initiator: 3
+    target: 21
+    guaranteed_bw: 0.8
+    max_latency: 10
+    priority: 0
+  - initiator: 4
+    target: 20
+    guaranteed_bw: 1.0
+    max_latency: 14
+    priority: 1
+  - initiator: 7
+    target: 22
+    guaranteed_bw: 0.5
+    max_latency: 65
+    priority: 2
   validate_bandwidth: true
   validate_latency: true

@@ -1,380 +1,315 @@
-# Small-scale Example 8: Handheld Gaming Console
-# 8 Initiators, 3 Targets
-# Use case: Portable gaming system with GPU and multimedia
-
-network: 'Irregular'
-num_nodes: 23
-
+network: Irregular
+num_nodes: 26
 nodes:
-  # === Initiators (8) ===
-  - id: 0
-    type: "Initiator"
-    name: "CPU_Core0"
-    avg_throughput: 3.0
-    max_throughput: 6.0
-    latency_requirement: 25
-    priority: 0
-    traffic_pattern: "bursty"
-
-  - id: 1
-    type: "Initiator"
-    name: "CPU_Core1"
-    avg_throughput: 3.0
-    max_throughput: 6.0
-    latency_requirement: 25
-    priority: 0
-    traffic_pattern: "bursty"
-
-  - id: 2
-    type: "Initiator"
-    name: "GPU"
-    avg_throughput: 12.0
-    max_throughput: 24.0
-    latency_requirement: 40
-    priority: 0
-    traffic_pattern: "streaming"
-
-  - id: 3
-    type: "Initiator"
-    name: "Audio_DSP"
-    avg_throughput: 1.0
-    max_throughput: 2.0
-    latency_requirement: 30
-    priority: 1
-    traffic_pattern: "streaming"
-
-  - id: 4
-    type: "Initiator"
-    name: "Video_Decoder"
-    avg_throughput: 4.0
-    max_throughput: 8.0
-    latency_requirement: 50
-    priority: 1
-    traffic_pattern: "streaming"
-
-  - id: 5
-    type: "Initiator"
-    name: "Display_Controller"
-    avg_throughput: 3.5
-    max_throughput: 7.0
-    latency_requirement: 16
-    priority: 0
-    traffic_pattern: "streaming"
-
-  - id: 6
-    type: "Initiator"
-    name: "WiFi_Controller"
-    avg_throughput: 2.0
-    max_throughput: 4.0
-    latency_requirement: 60
-    priority: 2
-    traffic_pattern: "bursty"
-
-  - id: 7
-    type: "Initiator"
-    name: "Storage_Controller"
-    avg_throughput: 1.5
-    max_throughput: 3.0
-    latency_requirement: 100
-    priority: 2
-    traffic_pattern: "bursty"
-
-  # === NIUs (9) ===
-  - id: 8
-    type: "NIU"
-    name: "CPU_NIU"
-    width: 64
-    clock_domain: "fast"
-
-  - id: 9
-    type: "NIU"
-    name: "GPU_NIU"
-    width: 128
-    clock_domain: "fast"
-
-  - id: 10
-    type: "NIU"
-    name: "Audio_NIU"
-    width: 64
-    clock_domain: "fast"
-
-  - id: 11
-    type: "NIU"
-    name: "Video_NIU"
-    width: 128
-    clock_domain: "fast"
-
-  - id: 12
-    type: "NIU"
-    name: "Display_NIU"
-    width: 64
-    clock_domain: "fast"
-
-  - id: 13
-    type: "NIU"
-    name: "WiFi_NIU"
-    width: 64
-    clock_domain: "fast"
-
-  - id: 14
-    type: "NIU"
-    name: "Storage_NIU"
-    width: 64
-    clock_domain: "slow"
-
-  - id: 15
-    type: "NIU"
-    name: "DDR_NIU"
-    width: 128
-    clock_domain: "fast"
-
-  - id: 16
-    type: "NIU"
-    name: "VRAM_NIU"
-    width: 128
-    clock_domain: "fast"
-
-  # === Routers (3) ===
-  - id: 17
-    type: "Router"
-    name: "CPU_Router"
-    width: 64
-    clock_domain: "fast"
-    num_ports: 4
-
-  - id: 18
-    type: "Router"
-    name: "GPU_Router"
-    width: 128
-    clock_domain: "fast"
-    num_ports: 4
-
-  - id: 19
-    type: "Router"
-    name: "Memory_Router"
-    width: 128
-    clock_domain: "fast"
-    num_ports: 4
-
-  # === Arbiter (2) ===
-  - id: 20
-    type: "Arbiter"
-    name: "CPU_Arbiter"
-    num_inputs: 2
-    width: 64
-    clock_domain: "fast"
-    policy: "round_robin"
-
-  - id: 21
-    type: "Arbiter"
-    name: "Media_Arbiter"
-    num_inputs: 2
-    width: 128
-    clock_domain: "fast"
-    policy: "priority"
-
-  # === Targets (3) ===
-  - id: 22
-    type: "Target"
-    name: "DDR4_Main"
-    max_bandwidth: 34.1
-    latency: 90
-    size: 6
-    type_detail: "DRAM"
-
-  - id: 23
-    type: "Target"
-    name: "VRAM"
-    max_bandwidth: 25.6
-    latency: 50
-    size: 2
-    type_detail: "GDDR"
-
-  - id: 24
-    type: "Target"
-    name: "UFS_Storage"
-    max_bandwidth: 2.9
-    latency: 200
-    size: 256
-    type_detail: "UFS"
-
+- id: 0
+  type: Initiator
+  name: CPU_Core0
+  avg_throughput: 3.0
+  max_throughput: 6.0
+  latency_requirement: 25
+  priority: 0
+  traffic_pattern: bursty
+- id: 1
+  type: Initiator
+  name: CPU_Core1
+  avg_throughput: 3.0
+  max_throughput: 6.0
+  latency_requirement: 25
+  priority: 0
+  traffic_pattern: bursty
+- id: 2
+  type: Initiator
+  name: GPU
+  avg_throughput: 12.0
+  max_throughput: 24.0
+  latency_requirement: 40
+  priority: 0
+  traffic_pattern: streaming
+- id: 3
+  type: Initiator
+  name: Audio_DSP
+  avg_throughput: 1.0
+  max_throughput: 2.0
+  latency_requirement: 30
+  priority: 1
+  traffic_pattern: streaming
+- id: 4
+  type: Initiator
+  name: Video_Decoder
+  avg_throughput: 4.0
+  max_throughput: 8.0
+  latency_requirement: 50
+  priority: 1
+  traffic_pattern: streaming
+- id: 5
+  type: Initiator
+  name: Display_Controller
+  avg_throughput: 3.5
+  max_throughput: 7.0
+  latency_requirement: 16
+  priority: 0
+  traffic_pattern: streaming
+- id: 6
+  type: Initiator
+  name: WiFi_Controller
+  avg_throughput: 2.0
+  max_throughput: 4.0
+  latency_requirement: 60
+  priority: 2
+  traffic_pattern: bursty
+- id: 7
+  type: Initiator
+  name: Storage_Controller
+  avg_throughput: 1.5
+  max_throughput: 3.0
+  latency_requirement: 100
+  priority: 2
+  traffic_pattern: bursty
+- id: 8
+  type: NIU
+  name: CPU_NIU
+  width: 64
+  clock_domain: fast
+- id: 9
+  type: NIU
+  name: GPU_NIU
+  width: 128
+  clock_domain: fast
+- id: 10
+  type: NIU
+  name: Audio_NIU
+  width: 64
+  clock_domain: fast
+- id: 11
+  type: NIU
+  name: Video_NIU
+  width: 128
+  clock_domain: fast
+- id: 12
+  type: NIU
+  name: Display_NIU
+  width: 64
+  clock_domain: fast
+- id: 13
+  type: NIU
+  name: WiFi_NIU
+  width: 64
+  clock_domain: fast
+- id: 14
+  type: NIU
+  name: Storage_NIU
+  width: 64
+  clock_domain: slow
+- id: 15
+  type: NIU
+  name: DDR_NIU
+  width: 128
+  clock_domain: fast
+- id: 16
+  type: NIU
+  name: VRAM_NIU
+  width: 128
+  clock_domain: fast
+- id: 17
+  type: Router
+  name: CPU_Router
+  width: 64
+  clock_domain: fast
+  num_ports: 4
+- id: 18
+  type: Router
+  name: GPU_Router
+  width: 128
+  clock_domain: fast
+  num_ports: 4
+- id: 19
+  type: Router
+  name: Memory_Router
+  width: 128
+  clock_domain: fast
+  num_ports: 6
+- id: 20
+  type: Arbiter
+  name: CPU_Arbiter
+  num_inputs: 2
+  width: 64
+  clock_domain: fast
+  policy: round_robin
+- id: 21
+  type: Arbiter
+  name: Media_Arbiter
+  num_inputs: 2
+  width: 128
+  clock_domain: fast
+  policy: priority
+- id: 23
+  type: ClockConverter
+  name: Storage_CDC
+  width: 64
+  src_clock_domain: slow
+  dst_clock_domain: fast
+- id: 22
+  type: Target
+  name: DDR4_Main
+  max_bandwidth: 34.1
+  latency: 90
+  size: 6
+  type_detail: DRAM
+- id: 24
+  type: Target
+  name: VRAM
+  max_bandwidth: 25.6
+  latency: 50
+  size: 2
+  type_detail: GDDR
+- id: 25
+  type: Target
+  name: UFS_Storage
+  max_bandwidth: 2.9
+  latency: 200
+  size: 256
+  type_detail: UFS
 graph:
   edges:
-    # Initiator → NIU
-    - src: 0
-      dst: 8
-      width: 64
-      latency: 1
-
-    - src: 1
-      dst: 8
-      width: 64
-      latency: 1
-
-    - src: 2
-      dst: 9
-      width: 128
-      latency: 1
-
-    - src: 3
-      dst: 10
-      width: 64
-      latency: 1
-
-    - src: 4
-      dst: 11
-      width: 128
-      latency: 1
-
-    - src: 5
-      dst: 12
-      width: 64
-      latency: 1
-
-    - src: 6
-      dst: 13
-      width: 64
-      latency: 1
-
-    - src: 7
-      dst: 14
-      width: 64
-      latency: 1
-
-    # CPU cores → CPU Arbiter
-    - src: 8
-      dst: 20
-      width: 64
-      latency: 1
-
-    - src: 13
-      dst: 20
-      width: 64
-      latency: 1
-
-    - src: 20
-      dst: 17
-      width: 64
-      latency: 2
-
-    # Multimedia → Media Arbiter
-    - src: 11
-      dst: 21
-      width: 128
-      latency: 1
-
-    - src: 9
-      dst: 21
-      width: 128
-      latency: 1
-
-    - src: 21
-      dst: 18
-      width: 128
-      latency: 2
-
-    # Audio/Display → CPU Router
-    - src: 10
-      dst: 17
-      width: 64
-      latency: 1
-
-    - src: 12
-      dst: 17
-      width: 64
-      latency: 1
-
-    # Routers → Memory Router
-    - src: 17
-      dst: 19
-      width: 64
-      latency: 1
-
-    - src: 18
-      dst: 19
-      width: 128
-      latency: 1
-
-    - src: 14
-      dst: 19
-      width: 64
-      latency: 2
-
-    # Memory Router → Memory NIUs
-    - src: 19
-      dst: 15
-      width: 128
-      latency: 1
-
-    - src: 19
-      dst: 16
-      width: 128
-      latency: 1
-
-    # Memory NIUs → Targets
-    - src: 15
-      dst: 22
-      width: 128
-      latency: 5
-
-    - src: 16
-      dst: 23
-      width: 128
-      latency: 3
-
-    - src: 19
-      dst: 24
-      width: 128
-      latency: 8
-
+  - src: 0
+    dst: 8
+    width: 64
+    latency: 1
+  - src: 1
+    dst: 8
+    width: 64
+    latency: 1
+  - src: 2
+    dst: 9
+    width: 128
+    latency: 1
+  - src: 3
+    dst: 10
+    width: 64
+    latency: 1
+  - src: 4
+    dst: 11
+    width: 128
+    latency: 1
+  - src: 5
+    dst: 12
+    width: 64
+    latency: 1
+  - src: 6
+    dst: 13
+    width: 64
+    latency: 1
+  - src: 7
+    dst: 14
+    width: 64
+    latency: 1
+  - src: 8
+    dst: 20
+    width: 64
+    latency: 1
+  - src: 13
+    dst: 20
+    width: 64
+    latency: 1
+  - src: 20
+    dst: 17
+    width: 64
+    latency: 2
+  - src: 11
+    dst: 21
+    width: 128
+    latency: 1
+  - src: 9
+    dst: 21
+    width: 128
+    latency: 1
+  - src: 21
+    dst: 18
+    width: 128
+    latency: 2
+  - src: 10
+    dst: 17
+    width: 64
+    latency: 1
+  - src: 12
+    dst: 17
+    width: 64
+    latency: 1
+  - src: 17
+    dst: 19
+    width: 64
+    latency: 1
+  - src: 18
+    dst: 19
+    width: 128
+    latency: 1
+  - src: 14
+    dst: 23
+    width: 64
+    latency: 1
+  - src: 23
+    dst: 19
+    width: 64
+    latency: 2
+  - src: 19
+    dst: 15
+    width: 128
+    latency: 1
+  - src: 19
+    dst: 16
+    width: 128
+    latency: 1
+  - src: 15
+    dst: 22
+    width: 128
+    latency: 5
+  - src: 16
+    dst: 24
+    width: 128
+    latency: 3
+  - src: 19
+    dst: 25
+    width: 128
+    latency: 8
 constraints:
-  niu_entry_only: true
-
+  niu_entry_only: false
   clock_domains:
-    - name: "fast"
-      frequency: 1600
-    - name: "slow"
-      frequency: 400
-
+  - name: fast
+    frequency: 1600
+  - name: slow
+    frequency: 400
   enforce_width_match: false
   max_end_to_end_latency: 250
-
   bandwidth_allocation:
-    - initiator: 2
-      target: 23
-      guaranteed_bw: 12.0
-      max_latency: 55
-      priority: 0
-
-    - initiator: 5
-      target: 23
-      guaranteed_bw: 3.5
-      max_latency: 25
-      priority: 0
-
-    - initiator: 0
-      target: 22
-      guaranteed_bw: 3.0
-      max_latency: 40
-      priority: 0
-
-    - initiator: 4
-      target: 22
-      guaranteed_bw: 4.0
-      max_latency: 70
-      priority: 1
-
-    - initiator: 3
-      target: 22
-      guaranteed_bw: 1.0
-      max_latency: 50
-      priority: 1
-
-    - initiator: 7
-      target: 24
-      guaranteed_bw: 1.5
-      max_latency: 240
-      priority: 2
-
+  - initiator: 2
+    target: 24
+    guaranteed_bw: 12.0
+    max_latency: 55
+    priority: 0
+  - initiator: 5
+    target: 24
+    guaranteed_bw: 3.5
+    max_latency: 25
+    priority: 0
+  - initiator: 0
+    target: 22
+    guaranteed_bw: 3.0
+    max_latency: 40
+    priority: 0
+  - initiator: 4
+    target: 22
+    guaranteed_bw: 4.0
+    max_latency: 70
+    priority: 1
+  - initiator: 3
+    target: 22
+    guaranteed_bw: 1.0
+    max_latency: 50
+    priority: 1
+  - initiator: 7
+    target: 25
+    guaranteed_bw: 1.5
+    max_latency: 240
+    priority: 2
   validate_bandwidth: true
   validate_latency: true

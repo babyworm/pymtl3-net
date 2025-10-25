@@ -1,338 +1,280 @@
-# Small-scale Example 4: Smart Security Camera
-# 8 Initiators, 3 Targets
-# Use case: AI-powered security camera with local processing
-
-network: 'Irregular'
-num_nodes: 21
-
+network: Irregular
+num_nodes: 23
 nodes:
-  # === Initiators (8) ===
-  - id: 0
-    type: "Initiator"
-    name: "ISP_Pipeline"
-    avg_throughput: 6.0
-    max_throughput: 12.0
-    latency_requirement: 30
-    priority: 0
-    traffic_pattern: "streaming"
-
-  - id: 1
-    type: "Initiator"
-    name: "H265_Encoder"
-    avg_throughput: 4.0
-    max_throughput: 8.0
-    latency_requirement: 50
-    priority: 1
-    traffic_pattern: "streaming"
-
-  - id: 2
-    type: "Initiator"
-    name: "Face_Detection"
-    avg_throughput: 3.0
-    max_throughput: 6.0
-    latency_requirement: 60
-    priority: 1
-    traffic_pattern: "bursty"
-
-  - id: 3
-    type: "Initiator"
-    name: "Object_Tracking"
-    avg_throughput: 2.5
-    max_throughput: 5.0
-    latency_requirement: 55
-    priority: 1
-    traffic_pattern: "bursty"
-
-  - id: 4
-    type: "Initiator"
-    name: "Motion_Detection"
-    avg_throughput: 1.0
-    max_throughput: 2.0
-    latency_requirement: 40
-    priority: 2
-    traffic_pattern: "bursty"
-
-  - id: 5
-    type: "Initiator"
-    name: "Network_Stack"
-    avg_throughput: 5.0
-    max_throughput: 10.0
-    latency_requirement: 100
-    priority: 2
-    traffic_pattern: "bursty"
-
-  - id: 6
-    type: "Initiator"
-    name: "ARM_CPU"
-    avg_throughput: 1.5
-    max_throughput: 3.0
-    latency_requirement: 35
-    priority: 0
-    traffic_pattern: "bursty"
-
-  - id: 7
-    type: "Initiator"
-    name: "Audio_Codec"
-    avg_throughput: 0.5
-    max_throughput: 1.0
-    latency_requirement: 45
-    priority: 2
-    traffic_pattern: "streaming"
-
-  # === NIUs (8) ===
-  - id: 8
-    type: "NIU"
-    name: "ISP_NIU"
-    width: 128
-    clock_domain: "fast"
-
-  - id: 9
-    type: "NIU"
-    name: "Encoder_NIU"
-    width: 128
-    clock_domain: "fast"
-
-  - id: 10
-    type: "NIU"
-    name: "AI_NIU0"
-    width: 64
-    clock_domain: "fast"
-
-  - id: 11
-    type: "NIU"
-    name: "AI_NIU1"
-    width: 64
-    clock_domain: "fast"
-
-  - id: 12
-    type: "NIU"
-    name: "Motion_NIU"
-    width: 32
-    clock_domain: "fast"
-
-  - id: 13
-    type: "NIU"
-    name: "Network_NIU"
-    width: 64
-    clock_domain: "fast"
-
-  - id: 14
-    type: "NIU"
-    name: "CPU_NIU"
-    width: 64
-    clock_domain: "fast"
-
-  - id: 15
-    type: "NIU"
-    name: "Audio_NIU"
-    width: 32
-    clock_domain: "slow"
-
-  # === Routers (2) ===
-  - id: 16
-    type: "Router"
-    name: "Processing_Router"
-    width: 128
-    clock_domain: "fast"
-    num_ports: 5
-
-  - id: 17
-    type: "Router"
-    name: "Memory_Router"
-    width: 128
-    clock_domain: "fast"
-    num_ports: 3
-
-  # === Arbiter (1) ===
-  - id: 18
-    type: "Arbiter"
-    name: "AI_Arbiter"
-    num_inputs: 3
-    width: 64
-    clock_domain: "fast"
-    policy: "round_robin"
-
-  # === Targets (3) ===
-  - id: 19
-    type: "Target"
-    name: "DDR3_Memory"
-    max_bandwidth: 12.8
-    latency: 120
-    size: 1
-    type_detail: "DRAM"
-
-  - id: 20
-    type: "Target"
-    name: "Frame_Buffer"
-    max_bandwidth: 25.0
-    latency: 8
-    size: 0.064
-    type_detail: "SRAM"
-
-  - id: 21
-    type: "Target"
-    name: "SD_Storage"
-    max_bandwidth: 0.3
-    latency: 400
-    size: 64
-    type_detail: "SD_Card"
-
+- id: 0
+  type: Initiator
+  name: ISP_Pipeline
+  avg_throughput: 6.0
+  max_throughput: 12.0
+  latency_requirement: 30
+  priority: 0
+  traffic_pattern: streaming
+- id: 1
+  type: Initiator
+  name: H265_Encoder
+  avg_throughput: 4.0
+  max_throughput: 8.0
+  latency_requirement: 50
+  priority: 1
+  traffic_pattern: streaming
+- id: 2
+  type: Initiator
+  name: Face_Detection
+  avg_throughput: 3.0
+  max_throughput: 6.0
+  latency_requirement: 60
+  priority: 1
+  traffic_pattern: bursty
+- id: 3
+  type: Initiator
+  name: Object_Tracking
+  avg_throughput: 2.5
+  max_throughput: 5.0
+  latency_requirement: 55
+  priority: 1
+  traffic_pattern: bursty
+- id: 4
+  type: Initiator
+  name: Motion_Detection
+  avg_throughput: 1.0
+  max_throughput: 2.0
+  latency_requirement: 40
+  priority: 2
+  traffic_pattern: bursty
+- id: 5
+  type: Initiator
+  name: Network_Stack
+  avg_throughput: 5.0
+  max_throughput: 10.0
+  latency_requirement: 100
+  priority: 2
+  traffic_pattern: bursty
+- id: 6
+  type: Initiator
+  name: ARM_CPU
+  avg_throughput: 1.5
+  max_throughput: 3.0
+  latency_requirement: 35
+  priority: 0
+  traffic_pattern: bursty
+- id: 7
+  type: Initiator
+  name: Audio_Codec
+  avg_throughput: 0.5
+  max_throughput: 1.0
+  latency_requirement: 45
+  priority: 2
+  traffic_pattern: streaming
+- id: 8
+  type: NIU
+  name: ISP_NIU
+  width: 128
+  clock_domain: fast
+- id: 9
+  type: NIU
+  name: Encoder_NIU
+  width: 128
+  clock_domain: fast
+- id: 10
+  type: NIU
+  name: AI_NIU0
+  width: 64
+  clock_domain: fast
+- id: 11
+  type: NIU
+  name: AI_NIU1
+  width: 64
+  clock_domain: fast
+- id: 12
+  type: NIU
+  name: Motion_NIU
+  width: 32
+  clock_domain: fast
+- id: 13
+  type: NIU
+  name: Network_NIU
+  width: 64
+  clock_domain: fast
+- id: 14
+  type: NIU
+  name: CPU_NIU
+  width: 64
+  clock_domain: fast
+- id: 15
+  type: NIU
+  name: Audio_NIU
+  width: 32
+  clock_domain: slow
+- id: 16
+  type: Router
+  name: Processing_Router
+  width: 128
+  clock_domain: fast
+  num_ports: 6
+- id: 17
+  type: Router
+  name: Memory_Router
+  width: 128
+  clock_domain: fast
+  num_ports: 5
+- id: 18
+  type: Arbiter
+  name: AI_Arbiter
+  num_inputs: 3
+  width: 64
+  clock_domain: fast
+  policy: round_robin
+- id: 21
+  type: ClockConverter
+  name: Audio_NIU_Memory_Router_CDC
+  width: 32
+  src_clock_domain: slow
+  dst_clock_domain: fast
+- id: 19
+  type: Target
+  name: DDR3_Memory
+  max_bandwidth: 12.8
+  latency: 120
+  size: 1
+  type_detail: DRAM
+- id: 20
+  type: Target
+  name: Frame_Buffer
+  max_bandwidth: 25.0
+  latency: 8
+  size: 0.064
+  type_detail: SRAM
+- id: 21
+  type: Target
+  name: SD_Storage
+  max_bandwidth: 0.3
+  latency: 400
+  size: 64
+  type_detail: SD_Card
 graph:
   edges:
-    # Initiator → NIU
-    - src: 0
-      dst: 8
-      width: 128
-      latency: 1
-
-    - src: 1
-      dst: 9
-      width: 128
-      latency: 1
-
-    - src: 2
-      dst: 10
-      width: 64
-      latency: 1
-
-    - src: 3
-      dst: 11
-      width: 64
-      latency: 1
-
-    - src: 4
-      dst: 12
-      width: 32
-      latency: 1
-
-    - src: 5
-      dst: 13
-      width: 64
-      latency: 1
-
-    - src: 6
-      dst: 14
-      width: 64
-      latency: 1
-
-    - src: 7
-      dst: 15
-      width: 32
-      latency: 1
-
-    # AI NIUs → Arbiter
-    - src: 10
-      dst: 18
-      width: 64
-      latency: 1
-
-    - src: 11
-      dst: 18
-      width: 64
-      latency: 1
-
-    - src: 12
-      dst: 18
-      width: 32
-      latency: 1
-
-    - src: 18
-      dst: 16
-      width: 64
-      latency: 2
-
-    # ISP/Encoder → Processing Router
-    - src: 8
-      dst: 16
-      width: 128
-      latency: 1
-
-    - src: 9
-      dst: 16
-      width: 128
-      latency: 1
-
-    # CPU/Network → Processing Router
-    - src: 14
-      dst: 16
-      width: 64
-      latency: 1
-
-    - src: 13
-      dst: 16
-      width: 64
-      latency: 1
-
-    # Processing Router → Memory Router
-    - src: 16
-      dst: 17
-      width: 128
-      latency: 1
-
-    # Audio → Memory Router
-    - src: 15
-      dst: 17
-      width: 32
-      latency: 2
-
-    # Memory Router → Targets
-    - src: 17
-      dst: 19
-      width: 128
-      latency: 3
-
-    - src: 17
-      dst: 20
-      width: 128
-      latency: 2
-
-    - src: 17
-      dst: 21
-      width: 128
-      latency: 10
-
+  - src: 0
+    dst: 8
+    width: 128
+    latency: 1
+  - src: 1
+    dst: 9
+    width: 128
+    latency: 1
+  - src: 2
+    dst: 10
+    width: 64
+    latency: 1
+  - src: 3
+    dst: 11
+    width: 64
+    latency: 1
+  - src: 4
+    dst: 12
+    width: 32
+    latency: 1
+  - src: 5
+    dst: 13
+    width: 64
+    latency: 1
+  - src: 6
+    dst: 14
+    width: 64
+    latency: 1
+  - src: 7
+    dst: 15
+    width: 32
+    latency: 1
+  - src: 10
+    dst: 18
+    width: 64
+    latency: 1
+  - src: 11
+    dst: 18
+    width: 64
+    latency: 1
+  - src: 12
+    dst: 18
+    width: 32
+    latency: 1
+  - src: 18
+    dst: 16
+    width: 64
+    latency: 2
+  - src: 8
+    dst: 16
+    width: 128
+    latency: 1
+  - src: 9
+    dst: 16
+    width: 128
+    latency: 1
+  - src: 14
+    dst: 16
+    width: 64
+    latency: 1
+  - src: 13
+    dst: 16
+    width: 64
+    latency: 1
+  - src: 16
+    dst: 17
+    width: 128
+    latency: 1
+  - src: 15
+    dst: 21
+    width: 32
+    latency: 1
+  - src: 21
+    dst: 17
+    width: 32
+    latency: 2
+  - src: 17
+    dst: 19
+    width: 128
+    latency: 3
+  - src: 17
+    dst: 20
+    width: 128
+    latency: 2
+  - src: 17
+    dst: 21
+    width: 128
+    latency: 10
 constraints:
-  niu_entry_only: true
-
+  niu_entry_only: false
   clock_domains:
-    - name: "fast"
-      frequency: 800
-    - name: "slow"
-      frequency: 200
-
+  - name: fast
+    frequency: 800
+  - name: slow
+    frequency: 200
   enforce_width_match: false
   max_end_to_end_latency: 500
-
   bandwidth_allocation:
-    - initiator: 0
-      target: 20
-      guaranteed_bw: 6.0
-      max_latency: 40
-      priority: 0
-
-    - initiator: 1
-      target: 19
-      guaranteed_bw: 4.0
-      max_latency: 65
-      priority: 1
-
-    - initiator: 2
-      target: 19
-      guaranteed_bw: 3.0
-      max_latency: 75
-      priority: 1
-
-    - initiator: 3
-      target: 19
-      guaranteed_bw: 2.5
-      max_latency: 70
-      priority: 1
-
-    - initiator: 5
-      target: 21
-      guaranteed_bw: 0.25
-      max_latency: 450
-      priority: 2
-
+  - initiator: 0
+    target: 20
+    guaranteed_bw: 6.0
+    max_latency: 40
+    priority: 0
+  - initiator: 1
+    target: 19
+    guaranteed_bw: 4.0
+    max_latency: 65
+    priority: 1
+  - initiator: 2
+    target: 19
+    guaranteed_bw: 3.0
+    max_latency: 75
+    priority: 1
+  - initiator: 3
+    target: 19
+    guaranteed_bw: 2.5
+    max_latency: 70
+    priority: 1
+  - initiator: 5
+    target: 21
+    guaranteed_bw: 0.25
+    max_latency: 450
+    priority: 2
   validate_bandwidth: true
   validate_latency: true
