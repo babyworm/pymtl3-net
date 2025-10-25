@@ -357,6 +357,24 @@ def generate_html_report(all_stats, output_path):
             border-radius: 3px;
         }
 
+        .interactive-btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 5px;
+            text-decoration: none;
+            margin-top: 1rem;
+            font-weight: bold;
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .interactive-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
         .footer {
             background: #333;
             color: white;
@@ -521,6 +539,9 @@ def generate_html_report(all_stats, output_path):
                                 {node_types_html}
                             </div>
                         </div>
+                        <a href="interactive/{scale}/{name}.html" class="interactive-btn">
+                            🔬 View Interactive
+                        </a>
                     </div>
                 </div>
 """

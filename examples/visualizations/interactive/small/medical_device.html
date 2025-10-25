@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical Device - Interactive Topology</title>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: #f5f5f5;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+        }
+
+        .header .back-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background 0.3s;
+        }
+
+        .header .back-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .container {
+            display: flex;
+            height: calc(100vh - 60px);
+        }
+
+        .sidebar {
+            width: 350px;
+            background: white;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-section {
+            padding: 1.5rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .sidebar-section h2 {
+            font-size: 1.2rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+        }
+
+        .stat-item {
+            background: #f5f7fa;
+            padding: 0.75rem;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .stat-item .value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-item .label {
+            font-size: 0.75rem;
+            color: #666;
+            margin-top: 0.25rem;
+        }
+
+        .legend {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .control-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.75rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.3s;
+        }
+
+        .control-btn:hover {
+            background: #5568d3;
+        }
+
+        .control-btn.secondary {
+            background: #95a5a6;
+        }
+
+        .control-btn.secondary:hover {
+            background: #7f8c8d;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .details-panel {
+            background: #f9f9f9;
+            padding: 1.5rem;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .details-panel h3 {
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .details-panel pre {
+            background: white;
+            padding: 1rem;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+
+        .qos-flow {
+            background: white;
+            padding: 0.75rem;
+            border-radius: 5px;
+            margin-bottom: 0.5rem;
+            border-left: 3px solid #667eea;
+        }
+
+        .qos-flow .flow-name {
+            font-weight: bold;
+            margin-bottom: 0.25rem;
+        }
+
+        .qos-flow .flow-details {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        #network {
+            flex: 1;
+            background: white;
+        }
+
+        .filter-group {
+            margin-top: 0.5rem;
+        }
+
+        .filter-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 0.25rem 0;
+        }
+
+        .info-message {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔬 Medical Device</h1>
+        <a href="../report.html" class="back-btn">← Back to Overview</a>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <div class="sidebar-section">
+                <h2>📊 Statistics</h2>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="value">24</div>
+                        <div class="label">Nodes</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="value">23</div>
+                        <div class="label">Edges</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="value">8</div>
+                        <div class="label">Initiators</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="value">3</div>
+                        <div class="label">Targets</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="value">9</div>
+                        <div class="label">NIUs</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="value">3</div>
+                        <div class="label">Routers</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h2>🎨 Node Types</h2>
+                <div class="legend">
+
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #A8E6CF;"></div>
+                        <span>Arbiter (1)</span>
+                    </div>
+
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #FF6B6B;"></div>
+                        <span>Initiator (8)</span>
+                    </div>
+
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #FFD93D;"></div>
+                        <span>NIU (9)</span>
+                    </div>
+
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #95E1D3;"></div>
+                        <span>Router (3)</span>
+                    </div>
+
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #4ECDC4;"></div>
+                        <span>Target (3)</span>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h2>🔍 Search & Filter</h2>
+                <input type="text" id="searchBox" class="search-box" placeholder="Search nodes...">
+                <div class="controls">
+                    <button class="control-btn" onclick="fitNetwork()">📐 Fit to Screen</button>
+                    <button class="control-btn secondary" onclick="resetView()">🔄 Reset View</button>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h2>⚡ QoS Flows</h2>
+
+                <div class="qos-flow">
+                    <div class="flow-name">ECG_Processor → Waveform_Buffer</div>
+                    <div class="flow-details">BW: 0.5 GB/s | Latency: 30 cycles | Priority: 0</div>
+                </div>
+
+                <div class="qos-flow">
+                    <div class="flow-name">SpO2_Processor → Waveform_Buffer</div>
+                    <div class="flow-details">BW: 0.2 GB/s | Latency: 35 cycles | Priority: 0</div>
+                </div>
+
+                <div class="qos-flow">
+                    <div class="flow-name">Alarm_System → Waveform_Buffer</div>
+                    <div class="flow-details">BW: 0.1 GB/s | Latency: 25 cycles | Priority: 0</div>
+                </div>
+
+                <div class="qos-flow">
+                    <div class="flow-name">Display_Engine → Waveform_Buffer</div>
+                    <div class="flow-details">BW: 1.5 GB/s | Latency: 55 cycles | Priority: 1</div>
+                </div>
+
+                <div class="qos-flow">
+                    <div class="flow-name">ARM_Controller → Patient_Data</div>
+                    <div class="flow-details">BW: 0.6 GB/s | Latency: 60 cycles | Priority: 1</div>
+                </div>
+
+                <div class="qos-flow">
+                    <div class="flow-name">Network_Interface → Trend_Storage</div>
+                    <div class="flow-details">BW: 0.5 GB/s | Latency: 140 cycles | Priority: 2</div>
+                </div>
+
+            </div>
+
+            <div class="sidebar-section details-panel" id="detailsPanel">
+                <div class="info-message">
+                    💡 Click on a node or edge to see detailed information
+                </div>
+            </div>
+        </div>
+
+        <div id="network"></div>
+    </div>
+
+    <script type="text/javascript">
+        // Data
+        const nodesData = [
+        {
+                "id": 0,
+                "label": "ECG_Processor",
+                "title": "<b>ECG_Processor</b><br>Type: Initiator<br>avg_throughput: 0.5<br>max_throughput: 1.0<br>latency_requirement: 20<br>priority: 0<br>traffic_pattern: uniform",
+                "group": "Initiator",
+                "color": "#FF6B6B",
+                "data": {
+                        "id": 0,
+                        "type": "Initiator",
+                        "name": "ECG_Processor",
+                        "avg_throughput": 0.5,
+                        "max_throughput": 1.0,
+                        "latency_requirement": 20,
+                        "priority": 0,
+                        "traffic_pattern": "uniform"
+                }
+        },
+        {
+                "id": 1,
+                "label": "SpO2_Processor",
+                "title": "<b>SpO2_Processor</b><br>Type: Initiator<br>avg_throughput: 0.2<br>max_throughput: 0.4<br>latency_requirement: 25<br>priority: 0<br>traffic_pattern: uniform",
+                "group": "Initiator",
+                "color": "#FF6B6B",
+                "data": {
+                        "id": 1,
+                        "type": "Initiator",
+                        "name": "SpO2_Processor",
+                        "avg_throughput": 0.2,
+                        "max_throughput": 0.4,
+                        "latency_requirement": 25,
+                        "priority": 0,
+                        "traffic_pattern": "uniform"
+                }
+        },
+        {
+                "id": 2,
+                "label": "BP_Processor",
+                "title": "<b>BP_Processor</b><br>Type: Initiator<br>avg_throughput: 0.1<br>max_throughput: 0.2<br>latency_requirement: 30<br>priority: 1<br>traffic_pattern: bursty",
+                "group": "Initiator",
+                "color": "#FF6B6B",
+                "data": {
+                        "id": 2,
+                        "type": "Initiator",
+                        "name": "BP_Processor",
+                        "avg_throughput": 0.1,
+                        "max_throughput": 0.2,
+                        "latency_requirement": 30,
+                        "priority": 1,
+                        "traffic_pattern": "bursty"
+                }
+        },
+        {
+                "id": 3,
+                "label": "Temp_Sensor",
+                "title": "<b>Temp_Sensor</b><br>Type: Initiator<br>avg_throughput: 0.05<br>max_throughput: 0.1<br>latency_requirement: 50<br>priority: 2<br>traffic_pattern: uniform",
+                "group": "Initiator",
+                "color": "#FF6B6B",
+                "data": {
+                        "id": 3,
+                        "type": "Initiator",
+                        "name": "Temp_Sensor",
+                        "avg_throughput": 0.05,
+                        "max_throughput": 0.1,
+                        "latency_requirement": 50,
+                        "priority": 2,
+                        "traffic_pattern": "uniform"
+                }
+        },
+        {
+                "id": 4,
+                "label": "Display_Engine",
+                "title": "<b>Display_Engine</b><br>Type: Initiator<br>avg_throughput: 1.5<br>max_throughput: 3.0<br>latency_requirement: 40<br>priority: 1<br>traffic_pattern: streaming",
+                "group": "Initiator",
+                "color": "#FF6B6B",
+                "data": {
+                        "id": 4,
+                        "type": "Initiator",
+                        "name": "Display_Engine",
+                        "avg_throughput": 1.5,
+                        "max_throughput": 3.0,
+                        "latency_requirement": 40,
+                        "priority": 1,
+                        "traffic_pattern": "streaming"
+                }
+        },
+        {
+                "id": 5,
+                "label": "Alarm_System",
+                "title": "<b>Alarm_System</b><br>Type: Initiator<br>avg_throughput: 0.1<br>max_throughput: 0.2<br>latency_requirement: 15<br>priority: 0<br>traffic_pattern: bursty",
+                "group": "Initiator",
+                "color": "#FF6B6B",
+                "data": {
+                        "id": 5,
+                        "type": "Initiator",
+                        "name": "Alarm_System",
+                        "avg_throughput": 0.1,
+                        "max_throughput": 0.2,
+                        "latency_requirement": 15,
+                        "priority": 0,
+                        "traffic_pattern": "bursty"
+                }
+        },
+        {
+                "id": 6,
+                "label": "Network_Interface",
+                "title": "<b>Network_Interface</b><br>Type: Initiator<br>avg_throughput: 0.8<br>max_throughput: 1.6<br>latency_requirement: 100<br>priority: 2<br>traffic_pattern: bursty",
+                "group": "Initiator",
+                "color": "#FF6B6B",
+                "data": {
+                        "id": 6,
+                        "type": "Initiator",
+                        "name": "Network_Interface",
+                        "avg_throughput": 0.8,
+                        "max_throughput": 1.6,
+                        "latency_requirement": 100,
+                        "priority": 2,
+                        "traffic_pattern": "bursty"
+                }
+        },
+        {
+                "id": 7,
+                "label": "ARM_Controller",
+                "title": "<b>ARM_Controller</b><br>Type: Initiator<br>avg_throughput: 0.6<br>max_throughput: 1.2<br>latency_requirement: 35<br>priority: 1<br>traffic_pattern: bursty",
+                "group": "Initiator",
+                "color": "#FF6B6B",
+                "data": {
+                        "id": 7,
+                        "type": "Initiator",
+                        "name": "ARM_Controller",
+                        "avg_throughput": 0.6,
+                        "max_throughput": 1.2,
+                        "latency_requirement": 35,
+                        "priority": 1,
+                        "traffic_pattern": "bursty"
+                }
+        },
+        {
+                "id": 8,
+                "label": "ECG_NIU",
+                "title": "<b>ECG_NIU</b><br>Type: NIU<br>width: 32<br>clock_domain: fast",
+                "group": "NIU",
+                "color": "#FFD93D",
+                "data": {
+                        "id": 8,
+                        "type": "NIU",
+                        "name": "ECG_NIU",
+                        "width": 32,
+                        "clock_domain": "fast"
+                }
+        },
+        {
+                "id": 9,
+                "label": "SpO2_NIU",
+                "title": "<b>SpO2_NIU</b><br>Type: NIU<br>width: 16<br>clock_domain: fast",
+                "group": "NIU",
+                "color": "#FFD93D",
+                "data": {
+                        "id": 9,
+                        "type": "NIU",
+                        "name": "SpO2_NIU",
+                        "width": 16,
+                        "clock_domain": "fast"
+                }
+        },
+        {
+                "id": 10,
+                "label": "BP_NIU",
+                "title": "<b>BP_NIU</b><br>Type: NIU<br>width: 16<br>clock_domain: slow",
+                "group": "NIU",
+                "color": "#FFD93D",
+                "data": {
+                        "id": 10,
+                        "type": "NIU",
+                        "name": "BP_NIU",
+                        "width": 16,
+                        "clock_domain": "slow"
+                }
+        },
+        {
+                "id": 11,
+                "label": "Temp_NIU",
+                "title": "<b>Temp_NIU</b><br>Type: NIU<br>width: 16<br>clock_domain: slow",
+                "group": "NIU",
+                "color": "#FFD93D",
+                "data": {
+                        "id": 11,
+                        "type": "NIU",
+                        "name": "Temp_NIU",
+                        "width": 16,
+                        "clock_domain": "slow"
+                }
+        },
+        {
+                "id": 12,
+                "label": "Display_NIU",
+                "title": "<b>Display_NIU</b><br>Type: NIU<br>width: 32<br>clock_domain: fast",
+                "group": "NIU",
+                "color": "#FFD93D",
+                "data": {
+                        "id": 12,
+                        "type": "NIU",
+                        "name": "Display_NIU",
+                        "width": 32,
+                        "clock_domain": "fast"
+                }
+        },
+        {
+                "id": 13,
+                "label": "Alarm_NIU",
+                "title": "<b>Alarm_NIU</b><br>Type: NIU<br>width: 16<br>clock_domain: fast",
+                "group": "NIU",
+                "color": "#FFD93D",
+                "data": {
+                        "id": 13,
+                        "type": "NIU",
+                        "name": "Alarm_NIU",
+                        "width": 16,
+                        "clock_domain": "fast"
+                }
+        },
+        {
+                "id": 14,
+                "label": "Network_NIU",
+                "title": "<b>Network_NIU</b><br>Type: NIU<br>width: 32<br>clock_domain: fast",
+                "group": "NIU",
+                "color": "#FFD93D",
+                "data": {
+                        "id": 14,
+                        "type": "NIU",
+                        "name": "Network_NIU",
+                        "width": 32,
+                        "clock_domain": "fast"
+                }
+        },
+        {
+                "id": 15,
+                "label": "Controller_NIU",
+                "title": "<b>Controller_NIU</b><br>Type: NIU<br>width: 32<br>clock_domain: fast",
+                "group": "NIU",
+                "color": "#FFD93D",
+                "data": {
+                        "id": 15,
+                        "type": "NIU",
+                        "name": "Controller_NIU",
+                        "width": 32,
+                        "clock_domain": "fast"
+                }
+        },
+        {
+                "id": 16,
+                "label": "Memory_NIU",
+                "title": "<b>Memory_NIU</b><br>Type: NIU<br>width: 32<br>clock_domain: fast",
+                "group": "NIU",
+                "color": "#FFD93D",
+                "data": {
+                        "id": 16,
+                        "type": "NIU",
+                        "name": "Memory_NIU",
+                        "width": 32,
+                        "clock_domain": "fast"
+                }
+        },
+        {
+                "id": 17,
+                "label": "Sensor_Router",
+                "title": "<b>Sensor_Router</b><br>Type: Router<br>width: 32<br>clock_domain: fast<br>num_ports: 4",
+                "group": "Router",
+                "color": "#95E1D3",
+                "data": {
+                        "id": 17,
+                        "type": "Router",
+                        "name": "Sensor_Router",
+                        "width": 32,
+                        "clock_domain": "fast",
+                        "num_ports": 4
+                }
+        },
+        {
+                "id": 18,
+                "label": "Control_Router",
+                "title": "<b>Control_Router</b><br>Type: Router<br>width: 32<br>clock_domain: fast<br>num_ports: 4",
+                "group": "Router",
+                "color": "#95E1D3",
+                "data": {
+                        "id": 18,
+                        "type": "Router",
+                        "name": "Control_Router",
+                        "width": 32,
+                        "clock_domain": "fast",
+                        "num_ports": 4
+                }
+        },
+        {
+                "id": 19,
+                "label": "Peripheral_Router",
+                "title": "<b>Peripheral_Router</b><br>Type: Router<br>width: 16<br>clock_domain: slow<br>num_ports: 3",
+                "group": "Router",
+                "color": "#95E1D3",
+                "data": {
+                        "id": 19,
+                        "type": "Router",
+                        "name": "Peripheral_Router",
+                        "width": 16,
+                        "clock_domain": "slow",
+                        "num_ports": 3
+                }
+        },
+        {
+                "id": 20,
+                "label": "Critical_Arbiter",
+                "title": "<b>Critical_Arbiter</b><br>Type: Arbiter<br>num_inputs: 3<br>width: 32<br>clock_domain: fast<br>policy: priority",
+                "group": "Arbiter",
+                "color": "#A8E6CF",
+                "data": {
+                        "id": 20,
+                        "type": "Arbiter",
+                        "name": "Critical_Arbiter",
+                        "num_inputs": 3,
+                        "width": 32,
+                        "clock_domain": "fast",
+                        "policy": "priority"
+                }
+        },
+        {
+                "id": 21,
+                "label": "Waveform_Buffer",
+                "title": "<b>Waveform_Buffer</b><br>Type: Target<br>max_bandwidth: 5.0<br>latency: 5<br>size: 0.032<br>type_detail: SRAM",
+                "group": "Target",
+                "color": "#4ECDC4",
+                "data": {
+                        "id": 21,
+                        "type": "Target",
+                        "name": "Waveform_Buffer",
+                        "max_bandwidth": 5.0,
+                        "latency": 5,
+                        "size": 0.032,
+                        "type_detail": "SRAM"
+                }
+        },
+        {
+                "id": 22,
+                "label": "Patient_Data",
+                "title": "<b>Patient_Data</b><br>Type: Target<br>max_bandwidth: 3.0<br>latency: 20<br>size: 0.128<br>type_detail: FRAM",
+                "group": "Target",
+                "color": "#4ECDC4",
+                "data": {
+                        "id": 22,
+                        "type": "Target",
+                        "name": "Patient_Data",
+                        "max_bandwidth": 3.0,
+                        "latency": 20,
+                        "size": 0.128,
+                        "type_detail": "FRAM"
+                }
+        },
+        {
+                "id": 23,
+                "label": "Trend_Storage",
+                "title": "<b>Trend_Storage</b><br>Type: Target<br>max_bandwidth: 1.0<br>latency: 100<br>size: 2<br>type_detail: Flash",
+                "group": "Target",
+                "color": "#4ECDC4",
+                "data": {
+                        "id": 23,
+                        "type": "Target",
+                        "name": "Trend_Storage",
+                        "max_bandwidth": 1.0,
+                        "latency": 100,
+                        "size": 2,
+                        "type_detail": "Flash"
+                }
+        }
+];
+        const edgesData = [
+        {
+                "from": 0,
+                "to": 8,
+                "title": "<b>0 \u2192 8</b><br>width: 32<br>latency: 1",
+                "width": 1,
+                "arrows": "to",
+                "data": {
+                        "src": 0,
+                        "dst": 8,
+                        "width": 32,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 1,
+                "to": 9,
+                "title": "<b>1 \u2192 9</b><br>width: 16<br>latency: 1",
+                "width": 1,
+                "arrows": "to",
+                "data": {
+                        "src": 1,
+                        "dst": 9,
+                        "width": 16,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 2,
+                "to": 10,
+                "title": "<b>2 \u2192 10</b><br>width: 16<br>latency: 1",
+                "width": 1,
+                "arrows": "to",
+                "data": {
+                        "src": 2,
+                        "dst": 10,
+                        "width": 16,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 3,
+                "to": 11,
+                "title": "<b>3 \u2192 11</b><br>width: 16<br>latency: 1",
+                "width": 1,
+                "arrows": "to",
+                "data": {
+                        "src": 3,
+                        "dst": 11,
+                        "width": 16,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 4,
+                "to": 12,
+                "title": "<b>4 \u2192 12</b><br>width: 32<br>latency: 1",
+                "width": 1,
+                "arrows": "to",
+                "data": {
+                        "src": 4,
+                        "dst": 12,
+                        "width": 32,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 5,
+                "to": 13,
+                "title": "<b>5 \u2192 13</b><br>width: 16<br>latency: 1",
+                "width": 1,
+                "arrows": "to",
+                "data": {
+                        "src": 5,
+                        "dst": 13,
+                        "width": 16,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 6,
+                "to": 14,
+                "title": "<b>6 \u2192 14</b><br>width: 32<br>latency: 1",
+                "width": 1,
+                "arrows": "to",
+                "data": {
+                        "src": 6,
+                        "dst": 14,
+                        "width": 32,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 7,
+                "to": 15,
+                "title": "<b>7 \u2192 15</b><br>width: 32<br>latency: 1",
+                "width": 1,
+                "arrows": "to",
+                "data": {
+                        "src": 7,
+                        "dst": 15,
+                        "width": 32,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 8,
+                "to": 20,
+                "title": "<b>8 \u2192 20</b><br>width: 32<br>latency: 1",
+                "width": 1,
+                "arrows": "to",
+                "data": {
+                        "src": 8,
+                        "dst": 20,
+                        "width": 32,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 9,
+                "to": 20,
+                "title": "<b>9 \u2192 20</b><br>width: 16<br>latency: 1",
+                "width": 1,
+                "arrows": "to",
+                "data": {
+                        "src": 9,
+                        "dst": 20,
+                        "width": 16,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 13,
+                "to": 20,
+                "title": "<b>13 \u2192 20</b><br>width: 16<br>latency: 1",
+                "width": 1,
+                "arrows": "to",
+                "data": {
+                        "src": 13,
+                        "dst": 20,
+                        "width": 16,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 20,
+                "to": 17,
+                "title": "<b>20 \u2192 17</b><br>width: 32<br>latency: 2",
+                "width": 1,
+                "arrows": "to",
+                "data": {
+                        "src": 20,
+                        "dst": 17,
+                        "width": 32,
+                        "latency": 2
+                }
+        },
+        {
+                "from": 10,
+                "to": 19,
+                "title": "<b>10 \u2192 19</b><br>width: 16<br>latency: 1",
+                "width": 1,
+                "arrows": "to",
+                "data": {
+                        "src": 10,
+                        "dst": 19,
+                        "width": 16,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 11,
+                "to": 19,
+                "title": "<b>11 \u2192 19</b><br>width: 16<br>latency: 1",
+                "width": 1,
+                "arrows": "to",
+                "data": {
+                        "src": 11,
+                        "dst": 19,
+                        "width": 16,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 19,
+                "to": 17,
+                "title": "<b>19 \u2192 17</b><br>width: 16<br>latency: 2",
+                "width": 1,
+                "arrows": "to",
+                "data": {
+                        "src": 19,
+                        "dst": 17,
+                        "width": 16,
+                        "latency": 2
+                }
+        },
+        {
+                "from": 15,
+                "to": 18,
+                "title": "<b>15 \u2192 18</b><br>width: 32<br>latency: 1",
+                "width": 1,
+                "arrows": "to",
+                "data": {
+                        "src": 15,
+                        "dst": 18,
+                        "width": 32,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 12,
+                "to": 18,
+                "title": "<b>12 \u2192 18</b><br>width: 32<br>latency: 1",
+                "width": 1,
+                "arrows": "to",
+                "data": {
+                        "src": 12,
+                        "dst": 18,
+                        "width": 32,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 14,
+                "to": 18,
+                "title": "<b>14 \u2192 18</b><br>width: 32<br>latency: 1",
+                "width": 1,
+                "arrows": "to",
+                "data": {
+                        "src": 14,
+                        "dst": 18,
+                        "width": 32,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 17,
+                "to": 16,
+                "title": "<b>17 \u2192 16</b><br>width: 32<br>latency: 1",
+                "width": 1,
+                "arrows": "to",
+                "data": {
+                        "src": 17,
+                        "dst": 16,
+                        "width": 32,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 18,
+                "to": 16,
+                "title": "<b>18 \u2192 16</b><br>width: 32<br>latency: 1",
+                "width": 1,
+                "arrows": "to",
+                "data": {
+                        "src": 18,
+                        "dst": 16,
+                        "width": 32,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 16,
+                "to": 21,
+                "title": "<b>16 \u2192 21</b><br>width: 32<br>latency: 2",
+                "width": 1,
+                "arrows": "to",
+                "data": {
+                        "src": 16,
+                        "dst": 21,
+                        "width": 32,
+                        "latency": 2
+                }
+        },
+        {
+                "from": 16,
+                "to": 22,
+                "title": "<b>16 \u2192 22</b><br>width: 32<br>latency: 4",
+                "width": 1,
+                "arrows": "to",
+                "data": {
+                        "src": 16,
+                        "dst": 22,
+                        "width": 32,
+                        "latency": 4
+                }
+        },
+        {
+                "from": 16,
+                "to": 23,
+                "title": "<b>16 \u2192 23</b><br>width: 32<br>latency: 8",
+                "width": 1,
+                "arrows": "to",
+                "data": {
+                        "src": 16,
+                        "dst": 23,
+                        "width": 32,
+                        "latency": 8
+                }
+        }
+];
+
+        // Create network
+        const container = document.getElementById('network');
+        const data = {
+            nodes: new vis.DataSet(nodesData),
+            edges: new vis.DataSet(edgesData)
+        };
+
+        const options = {
+            nodes: {
+                shape: 'dot',
+                size: 25,
+                font: {
+                    size: 14,
+                    color: '#333'
+                },
+                borderWidth: 2,
+                borderWidthSelected: 4
+            },
+            edges: {
+                color: {
+                    color: '#848484',
+                    highlight: '#667eea',
+                    hover: '#667eea'
+                },
+                smooth: {
+                    type: 'continuous'
+                },
+                font: {
+                    size: 12,
+                    align: 'middle'
+                }
+            },
+            physics: {
+                enabled: true,
+                barnesHut: {
+                    gravitationalConstant: -8000,
+                    centralGravity: 0.3,
+                    springLength: 200,
+                    springConstant: 0.04,
+                    damping: 0.09
+                },
+                stabilization: {
+                    iterations: 200
+                }
+            },
+            interaction: {
+                hover: true,
+                tooltipDelay: 100,
+                navigationButtons: true,
+                keyboard: true
+            }
+        };
+
+        const network = new vis.Network(container, data, options);
+
+        // Event handlers
+        network.on('click', function(params) {
+            const detailsPanel = document.getElementById('detailsPanel');
+
+            if (params.nodes.length > 0) {
+                // Node clicked
+                const nodeId = params.nodes[0];
+                const node = nodesData.find(n => n.id === nodeId);
+
+                detailsPanel.innerHTML = `
+                    <h3>🔵 Node Details</h3>
+                    <pre>${JSON.stringify(node.data, null, 2)}</pre>
+                `;
+            } else if (params.edges.length > 0) {
+                // Edge clicked
+                const edgeId = params.edges[0];
+                const edge = edgesData.find(e =>
+                    e.from === data.edges.get(edgeId).from &&
+                    e.to === data.edges.get(edgeId).to
+                );
+
+                detailsPanel.innerHTML = `
+                    <h3>➡️ Edge Details</h3>
+                    <pre>${JSON.stringify(edge.data, null, 2)}</pre>
+                `;
+            } else {
+                // Background clicked
+                detailsPanel.innerHTML = `
+                    <div class="info-message">
+                        💡 Click on a node or edge to see detailed information
+                    </div>
+                `;
+            }
+        });
+
+        // Search functionality
+        document.getElementById('searchBox').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+
+            if (searchTerm === '') {
+                network.selectNodes([]);
+                return;
+            }
+
+            const matchingNodes = nodesData
+                .filter(n => n.label.toLowerCase().includes(searchTerm))
+                .map(n => n.id);
+
+            network.selectNodes(matchingNodes);
+            if (matchingNodes.length > 0) {
+                network.focus(matchingNodes[0], {
+                    scale: 1.5,
+                    animation: true
+                });
+            }
+        });
+
+        // Helper functions
+        function fitNetwork() {
+            network.fit({
+                animation: {
+                    duration: 1000,
+                    easingFunction: 'easeInOutQuad'
+                }
+            });
+        }
+
+        function resetView() {
+            network.moveTo({
+                scale: 1.0,
+                animation: {
+                    duration: 1000,
+                    easingFunction: 'easeInOutQuad'
+                }
+            });
+        }
+
+        // Stabilization progress
+        network.on('stabilizationProgress', function(params) {
+            console.log('Stabilization progress:', params.iterations);
+        });
+
+        network.on('stabilizationIterationsDone', function() {
+            console.log('Stabilization complete');
+            network.setOptions({ physics: false });
+        });
+
+        // Initial fit
+        setTimeout(() => fitNetwork(), 1000);
+    </script>
+</body>
+</html>

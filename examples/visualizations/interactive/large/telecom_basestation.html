@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telecom Basestation - Interactive Topology</title>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: #f5f5f5;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+        }
+
+        .header .back-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background 0.3s;
+        }
+
+        .header .back-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .container {
+            display: flex;
+            height: calc(100vh - 60px);
+        }
+
+        .sidebar {
+            width: 350px;
+            background: white;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-section {
+            padding: 1.5rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .sidebar-section h2 {
+            font-size: 1.2rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+        }
+
+        .stat-item {
+            background: #f5f7fa;
+            padding: 0.75rem;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .stat-item .value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-item .label {
+            font-size: 0.75rem;
+            color: #666;
+            margin-top: 0.25rem;
+        }
+
+        .legend {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .control-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.75rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.3s;
+        }
+
+        .control-btn:hover {
+            background: #5568d3;
+        }
+
+        .control-btn.secondary {
+            background: #95a5a6;
+        }
+
+        .control-btn.secondary:hover {
+            background: #7f8c8d;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .details-panel {
+            background: #f9f9f9;
+            padding: 1.5rem;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .details-panel h3 {
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .details-panel pre {
+            background: white;
+            padding: 1rem;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+
+        .qos-flow {
+            background: white;
+            padding: 0.75rem;
+            border-radius: 5px;
+            margin-bottom: 0.5rem;
+            border-left: 3px solid #667eea;
+        }
+
+        .qos-flow .flow-name {
+            font-weight: bold;
+            margin-bottom: 0.25rem;
+        }
+
+        .qos-flow .flow-details {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        #network {
+            flex: 1;
+            background: white;
+        }
+
+        .filter-group {
+            margin-top: 0.5rem;
+        }
+
+        .filter-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 0.25rem 0;
+        }
+
+        .info-message {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔬 Telecom Basestation</h1>
+        <a href="../report.html" class="back-btn">← Back to Overview</a>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <div class="sidebar-section">
+                <h2>📊 Statistics</h2>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="value">10</div>
+                        <div class="label">Nodes</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="value">0</div>
+                        <div class="label">Edges</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="value">10</div>
+                        <div class="label">Initiators</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="value">0</div>
+                        <div class="label">Targets</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="value">0</div>
+                        <div class="label">NIUs</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="value">0</div>
+                        <div class="label">Routers</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h2>🎨 Node Types</h2>
+                <div class="legend">
+
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #FF6B6B;"></div>
+                        <span>Initiator (10)</span>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h2>🔍 Search & Filter</h2>
+                <input type="text" id="searchBox" class="search-box" placeholder="Search nodes...">
+                <div class="controls">
+                    <button class="control-btn" onclick="fitNetwork()">📐 Fit to Screen</button>
+                    <button class="control-btn secondary" onclick="resetView()">🔄 Reset View</button>
+                </div>
+            </div>
+
+            <div class="sidebar-section details-panel" id="detailsPanel">
+                <div class="info-message">
+                    💡 Click on a node or edge to see detailed information
+                </div>
+            </div>
+        </div>
+
+        <div id="network"></div>
+    </div>
+
+    <script type="text/javascript">
+        // Data
+        const nodesData = [
+        {
+                "id": 0,
+                "label": "Core_0",
+                "title": "<b>Core_0</b><br>Type: Initiator<br>avg_throughput: 5.0<br>max_throughput: 10.0<br>latency_requirement: 50<br>priority: 0<br>traffic_pattern: bursty",
+                "group": "Initiator",
+                "color": "#FF6B6B",
+                "data": {
+                        "id": 0,
+                        "type": "Initiator",
+                        "name": "Core_0",
+                        "avg_throughput": 5.0,
+                        "max_throughput": 10.0,
+                        "latency_requirement": 50,
+                        "priority": 0,
+                        "traffic_pattern": "bursty"
+                }
+        },
+        {
+                "id": 1,
+                "label": "Core_1",
+                "title": "<b>Core_1</b><br>Type: Initiator<br>avg_throughput: 5.0<br>max_throughput: 10.0<br>latency_requirement: 50<br>priority: 1<br>traffic_pattern: bursty",
+                "group": "Initiator",
+                "color": "#FF6B6B",
+                "data": {
+                        "id": 1,
+                        "type": "Initiator",
+                        "name": "Core_1",
+                        "avg_throughput": 5.0,
+                        "max_throughput": 10.0,
+                        "latency_requirement": 50,
+                        "priority": 1,
+                        "traffic_pattern": "bursty"
+                }
+        },
+        {
+                "id": 2,
+                "label": "Core_2",
+                "title": "<b>Core_2</b><br>Type: Initiator<br>avg_throughput: 5.0<br>max_throughput: 10.0<br>latency_requirement: 50<br>priority: 2<br>traffic_pattern: bursty",
+                "group": "Initiator",
+                "color": "#FF6B6B",
+                "data": {
+                        "id": 2,
+                        "type": "Initiator",
+                        "name": "Core_2",
+                        "avg_throughput": 5.0,
+                        "max_throughput": 10.0,
+                        "latency_requirement": 50,
+                        "priority": 2,
+                        "traffic_pattern": "bursty"
+                }
+        },
+        {
+                "id": 3,
+                "label": "Core_3",
+                "title": "<b>Core_3</b><br>Type: Initiator<br>avg_throughput: 5.0<br>max_throughput: 10.0<br>latency_requirement: 50<br>priority: 0<br>traffic_pattern: bursty",
+                "group": "Initiator",
+                "color": "#FF6B6B",
+                "data": {
+                        "id": 3,
+                        "type": "Initiator",
+                        "name": "Core_3",
+                        "avg_throughput": 5.0,
+                        "max_throughput": 10.0,
+                        "latency_requirement": 50,
+                        "priority": 0,
+                        "traffic_pattern": "bursty"
+                }
+        },
+        {
+                "id": 4,
+                "label": "Core_4",
+                "title": "<b>Core_4</b><br>Type: Initiator<br>avg_throughput: 5.0<br>max_throughput: 10.0<br>latency_requirement: 50<br>priority: 1<br>traffic_pattern: bursty",
+                "group": "Initiator",
+                "color": "#FF6B6B",
+                "data": {
+                        "id": 4,
+                        "type": "Initiator",
+                        "name": "Core_4",
+                        "avg_throughput": 5.0,
+                        "max_throughput": 10.0,
+                        "latency_requirement": 50,
+                        "priority": 1,
+                        "traffic_pattern": "bursty"
+                }
+        },
+        {
+                "id": 5,
+                "label": "Core_5",
+                "title": "<b>Core_5</b><br>Type: Initiator<br>avg_throughput: 5.0<br>max_throughput: 10.0<br>latency_requirement: 50<br>priority: 2<br>traffic_pattern: bursty",
+                "group": "Initiator",
+                "color": "#FF6B6B",
+                "data": {
+                        "id": 5,
+                        "type": "Initiator",
+                        "name": "Core_5",
+                        "avg_throughput": 5.0,
+                        "max_throughput": 10.0,
+                        "latency_requirement": 50,
+                        "priority": 2,
+                        "traffic_pattern": "bursty"
+                }
+        },
+        {
+                "id": 6,
+                "label": "Core_6",
+                "title": "<b>Core_6</b><br>Type: Initiator<br>avg_throughput: 5.0<br>max_throughput: 10.0<br>latency_requirement: 50<br>priority: 0<br>traffic_pattern: bursty",
+                "group": "Initiator",
+                "color": "#FF6B6B",
+                "data": {
+                        "id": 6,
+                        "type": "Initiator",
+                        "name": "Core_6",
+                        "avg_throughput": 5.0,
+                        "max_throughput": 10.0,
+                        "latency_requirement": 50,
+                        "priority": 0,
+                        "traffic_pattern": "bursty"
+                }
+        },
+        {
+                "id": 7,
+                "label": "Core_7",
+                "title": "<b>Core_7</b><br>Type: Initiator<br>avg_throughput: 5.0<br>max_throughput: 10.0<br>latency_requirement: 50<br>priority: 1<br>traffic_pattern: bursty",
+                "group": "Initiator",
+                "color": "#FF6B6B",
+                "data": {
+                        "id": 7,
+                        "type": "Initiator",
+                        "name": "Core_7",
+                        "avg_throughput": 5.0,
+                        "max_throughput": 10.0,
+                        "latency_requirement": 50,
+                        "priority": 1,
+                        "traffic_pattern": "bursty"
+                }
+        },
+        {
+                "id": 8,
+                "label": "Core_8",
+                "title": "<b>Core_8</b><br>Type: Initiator<br>avg_throughput: 5.0<br>max_throughput: 10.0<br>latency_requirement: 50<br>priority: 2<br>traffic_pattern: bursty",
+                "group": "Initiator",
+                "color": "#FF6B6B",
+                "data": {
+                        "id": 8,
+                        "type": "Initiator",
+                        "name": "Core_8",
+                        "avg_throughput": 5.0,
+                        "max_throughput": 10.0,
+                        "latency_requirement": 50,
+                        "priority": 2,
+                        "traffic_pattern": "bursty"
+                }
+        },
+        {
+                "id": 9,
+                "label": "Core_9",
+                "title": "<b>Core_9</b><br>Type: Initiator<br>avg_throughput: 5.0<br>max_throughput: 10.0<br>latency_requirement: 50<br>priority: 0<br>traffic_pattern: bursty",
+                "group": "Initiator",
+                "color": "#FF6B6B",
+                "data": {
+                        "id": 9,
+                        "type": "Initiator",
+                        "name": "Core_9",
+                        "avg_throughput": 5.0,
+                        "max_throughput": 10.0,
+                        "latency_requirement": 50,
+                        "priority": 0,
+                        "traffic_pattern": "bursty"
+                }
+        }
+];
+        const edgesData = [];
+
+        // Create network
+        const container = document.getElementById('network');
+        const data = {
+            nodes: new vis.DataSet(nodesData),
+            edges: new vis.DataSet(edgesData)
+        };
+
+        const options = {
+            nodes: {
+                shape: 'dot',
+                size: 25,
+                font: {
+                    size: 14,
+                    color: '#333'
+                },
+                borderWidth: 2,
+                borderWidthSelected: 4
+            },
+            edges: {
+                color: {
+                    color: '#848484',
+                    highlight: '#667eea',
+                    hover: '#667eea'
+                },
+                smooth: {
+                    type: 'continuous'
+                },
+                font: {
+                    size: 12,
+                    align: 'middle'
+                }
+            },
+            physics: {
+                enabled: true,
+                barnesHut: {
+                    gravitationalConstant: -8000,
+                    centralGravity: 0.3,
+                    springLength: 200,
+                    springConstant: 0.04,
+                    damping: 0.09
+                },
+                stabilization: {
+                    iterations: 200
+                }
+            },
+            interaction: {
+                hover: true,
+                tooltipDelay: 100,
+                navigationButtons: true,
+                keyboard: true
+            }
+        };
+
+        const network = new vis.Network(container, data, options);
+
+        // Event handlers
+        network.on('click', function(params) {
+            const detailsPanel = document.getElementById('detailsPanel');
+
+            if (params.nodes.length > 0) {
+                // Node clicked
+                const nodeId = params.nodes[0];
+                const node = nodesData.find(n => n.id === nodeId);
+
+                detailsPanel.innerHTML = `
+                    <h3>🔵 Node Details</h3>
+                    <pre>${JSON.stringify(node.data, null, 2)}</pre>
+                `;
+            } else if (params.edges.length > 0) {
+                // Edge clicked
+                const edgeId = params.edges[0];
+                const edge = edgesData.find(e =>
+                    e.from === data.edges.get(edgeId).from &&
+                    e.to === data.edges.get(edgeId).to
+                );
+
+                detailsPanel.innerHTML = `
+                    <h3>➡️ Edge Details</h3>
+                    <pre>${JSON.stringify(edge.data, null, 2)}</pre>
+                `;
+            } else {
+                // Background clicked
+                detailsPanel.innerHTML = `
+                    <div class="info-message">
+                        💡 Click on a node or edge to see detailed information
+                    </div>
+                `;
+            }
+        });
+
+        // Search functionality
+        document.getElementById('searchBox').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+
+            if (searchTerm === '') {
+                network.selectNodes([]);
+                return;
+            }
+
+            const matchingNodes = nodesData
+                .filter(n => n.label.toLowerCase().includes(searchTerm))
+                .map(n => n.id);
+
+            network.selectNodes(matchingNodes);
+            if (matchingNodes.length > 0) {
+                network.focus(matchingNodes[0], {
+                    scale: 1.5,
+                    animation: true
+                });
+            }
+        });
+
+        // Helper functions
+        function fitNetwork() {
+            network.fit({
+                animation: {
+                    duration: 1000,
+                    easingFunction: 'easeInOutQuad'
+                }
+            });
+        }
+
+        function resetView() {
+            network.moveTo({
+                scale: 1.0,
+                animation: {
+                    duration: 1000,
+                    easingFunction: 'easeInOutQuad'
+                }
+            });
+        }
+
+        // Stabilization progress
+        network.on('stabilizationProgress', function(params) {
+            console.log('Stabilization progress:', params.iterations);
+        });
+
+        network.on('stabilizationIterationsDone', function() {
+            console.log('Stabilization complete');
+            network.setOptions({ physics: false });
+        });
+
+        // Initial fit
+        setTimeout(() => fitNetwork(), 1000);
+    </script>
+</body>
+</html>
