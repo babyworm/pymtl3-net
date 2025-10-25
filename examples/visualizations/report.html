@@ -1,0 +1,2030 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NoC Topology Visual Report</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .summary {
+            background: white;
+            border-radius: 10px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .summary h2 {
+            color: #667eea;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-card .value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card .label {
+            font-size: 0.9rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .scale-section {
+            margin-bottom: 3rem;
+        }
+
+        .scale-section h2 {
+            color: #764ba2;
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 3px solid #764ba2;
+        }
+
+        .examples-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+            gap: 2rem;
+        }
+
+        .example-card {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .example-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+        }
+
+        .example-card img {
+            width: 100%;
+            height: 300px;
+            object-fit: contain;
+            background: #f9f9f9;
+            border-bottom: 1px solid #eee;
+        }
+
+        .example-info {
+            padding: 1.5rem;
+        }
+
+        .example-info h3 {
+            color: #333;
+            margin-bottom: 0.5rem;
+            font-size: 1.3rem;
+        }
+
+        .example-info .description {
+            color: #666;
+            margin-bottom: 1rem;
+            font-size: 0.95rem;
+        }
+
+        .example-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .example-stat {
+            background: #f5f5f5;
+            padding: 0.5rem;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .example-stat .stat-label {
+            color: #666;
+        }
+
+        .example-stat .stat-value {
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .node-types {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+        }
+
+        .node-types-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.3rem;
+            font-size: 0.8rem;
+        }
+
+        .node-type-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .node-type-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+
+        .footer {
+            background: #333;
+            color: white;
+            text-align: center;
+            padding: 2rem;
+            margin-top: 3rem;
+        }
+
+        .toc {
+            background: white;
+            border-radius: 10px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .toc h2 {
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .toc ul {
+            list-style: none;
+            padding-left: 1rem;
+        }
+
+        .toc li {
+            margin: 0.5rem 0;
+        }
+
+        .toc a {
+            color: #764ba2;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .toc a:hover {
+            color: #667eea;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>NoC Topology Visual Report</h1>
+        <p>30개의 Network-on-Chip 토폴로지 예제 시각화</p>
+        <p style="font-size: 0.9rem; margin-top: 1rem;">생성일: 2025-10-22</p>
+    </div>
+
+    <div class="container">
+
+        <div class="summary">
+            <h2>📊 전체 통계</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="value">30</div>
+                    <div class="label">Total Examples</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value">904</div>
+                    <div class="label">Total Nodes</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value">728</div>
+                    <div class="label">Total Edges</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value">331</div>
+                    <div class="label">Total Initiators</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value">119</div>
+                    <div class="label">Total Targets</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="toc">
+            <h2>📑 목차</h2>
+            <ul>
+                <li><a href="#small">Small-Scale Examples (10)</a></li>
+                <li><a href="#medium">Medium-Scale Examples (10)</a></li>
+                <li><a href="#large">Large-Scale Examples (10)</a></li>
+            </ul>
+        </div>
+
+        <div class="scale-section" id="small">
+            <h2>Small-Scale Examples (10개)</h2>
+            <div class="examples-grid">
+
+                <div class="example-card">
+                    <img src="visualizations/small/automotive_adas.png" alt="automotive_adas">
+                    <div class="example-info">
+                        <h3>Automotive Adas</h3>
+                        <div class="example-stats">
+                            <div class="example-stat">
+                                <span class="stat-label">Nodes:</span>
+                                <span class="stat-value">25</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Edges:</span>
+                                <span class="stat-value">25</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Initiators:</span>
+                                <span class="stat-value">8</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Targets:</span>
+                                <span class="stat-value">3</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Routers:</span>
+                                <span class="stat-value">3</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Avg Degree:</span>
+                                <span class="stat-value">2.0</span>
+                            </div>
+                        </div>
+                        <div class="node-types">
+                            <div class="node-types-grid">
+                                
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #A8E6CF;"></div>
+                        <span>Arbiter: 1</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FF6B6B;"></div>
+                        <span>Initiator: 8</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FFD93D;"></div>
+                        <span>NIU: 10</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #95E1D3;"></div>
+                        <span>Router: 3</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #4ECDC4;"></div>
+                        <span>Target: 3</span>
+                    </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="example-card">
+                    <img src="visualizations/small/drone_controller.png" alt="drone_controller">
+                    <div class="example-info">
+                        <h3>Drone Controller</h3>
+                        <div class="example-stats">
+                            <div class="example-stat">
+                                <span class="stat-label">Nodes:</span>
+                                <span class="stat-value">24</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Edges:</span>
+                                <span class="stat-value">23</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Initiators:</span>
+                                <span class="stat-value">8</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Targets:</span>
+                                <span class="stat-value">3</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Routers:</span>
+                                <span class="stat-value">3</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Avg Degree:</span>
+                                <span class="stat-value">1.9</span>
+                            </div>
+                        </div>
+                        <div class="node-types">
+                            <div class="node-types-grid">
+                                
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #A8E6CF;"></div>
+                        <span>Arbiter: 1</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FF6B6B;"></div>
+                        <span>Initiator: 8</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FFD93D;"></div>
+                        <span>NIU: 9</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #95E1D3;"></div>
+                        <span>Router: 3</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #4ECDC4;"></div>
+                        <span>Target: 3</span>
+                    </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="example-card">
+                    <img src="visualizations/small/gaming_console.png" alt="gaming_console">
+                    <div class="example-info">
+                        <h3>Gaming Console</h3>
+                        <div class="example-stats">
+                            <div class="example-stat">
+                                <span class="stat-label">Nodes:</span>
+                                <span class="stat-value">25</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Edges:</span>
+                                <span class="stat-value">24</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Initiators:</span>
+                                <span class="stat-value">8</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Targets:</span>
+                                <span class="stat-value">3</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Routers:</span>
+                                <span class="stat-value">3</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Avg Degree:</span>
+                                <span class="stat-value">1.9</span>
+                            </div>
+                        </div>
+                        <div class="node-types">
+                            <div class="node-types-grid">
+                                
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #A8E6CF;"></div>
+                        <span>Arbiter: 2</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FF6B6B;"></div>
+                        <span>Initiator: 8</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FFD93D;"></div>
+                        <span>NIU: 9</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #95E1D3;"></div>
+                        <span>Router: 3</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #4ECDC4;"></div>
+                        <span>Target: 3</span>
+                    </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="example-card">
+                    <img src="visualizations/small/home_assistant.png" alt="home_assistant">
+                    <div class="example-info">
+                        <h3>Home Assistant</h3>
+                        <div class="example-stats">
+                            <div class="example-stat">
+                                <span class="stat-label">Nodes:</span>
+                                <span class="stat-value">23</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Edges:</span>
+                                <span class="stat-value">22</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Initiators:</span>
+                                <span class="stat-value">8</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Targets:</span>
+                                <span class="stat-value">3</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Routers:</span>
+                                <span class="stat-value">3</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Avg Degree:</span>
+                                <span class="stat-value">1.9</span>
+                            </div>
+                        </div>
+                        <div class="node-types">
+                            <div class="node-types-grid">
+                                
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #A8E6CF;"></div>
+                        <span>Arbiter: 1</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FF6B6B;"></div>
+                        <span>Initiator: 8</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FFD93D;"></div>
+                        <span>NIU: 8</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #95E1D3;"></div>
+                        <span>Router: 3</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #4ECDC4;"></div>
+                        <span>Target: 3</span>
+                    </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="example-card">
+                    <img src="visualizations/small/iot_device.png" alt="iot_device">
+                    <div class="example-info">
+                        <h3>Iot Device</h3>
+                        <div class="example-stats">
+                            <div class="example-stat">
+                                <span class="stat-label">Nodes:</span>
+                                <span class="stat-value">24</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Edges:</span>
+                                <span class="stat-value">23</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Initiators:</span>
+                                <span class="stat-value">8</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Targets:</span>
+                                <span class="stat-value">3</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Routers:</span>
+                                <span class="stat-value">3</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Avg Degree:</span>
+                                <span class="stat-value">1.9</span>
+                            </div>
+                        </div>
+                        <div class="node-types">
+                            <div class="node-types-grid">
+                                
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #A8E6CF;"></div>
+                        <span>Arbiter: 1</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #F38181;"></div>
+                        <span>Decoder: 1</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FF6B6B;"></div>
+                        <span>Initiator: 8</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FFD93D;"></div>
+                        <span>NIU: 8</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #95E1D3;"></div>
+                        <span>Router: 3</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #4ECDC4;"></div>
+                        <span>Target: 3</span>
+                    </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="example-card">
+                    <img src="visualizations/small/medical_device.png" alt="medical_device">
+                    <div class="example-info">
+                        <h3>Medical Device</h3>
+                        <div class="example-stats">
+                            <div class="example-stat">
+                                <span class="stat-label">Nodes:</span>
+                                <span class="stat-value">24</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Edges:</span>
+                                <span class="stat-value">23</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Initiators:</span>
+                                <span class="stat-value">8</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Targets:</span>
+                                <span class="stat-value">3</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Routers:</span>
+                                <span class="stat-value">3</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Avg Degree:</span>
+                                <span class="stat-value">1.9</span>
+                            </div>
+                        </div>
+                        <div class="node-types">
+                            <div class="node-types-grid">
+                                
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #A8E6CF;"></div>
+                        <span>Arbiter: 1</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FF6B6B;"></div>
+                        <span>Initiator: 8</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FFD93D;"></div>
+                        <span>NIU: 9</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #95E1D3;"></div>
+                        <span>Router: 3</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #4ECDC4;"></div>
+                        <span>Target: 3</span>
+                    </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="example-card">
+                    <img src="visualizations/small/mobile_soc.png" alt="mobile_soc">
+                    <div class="example-info">
+                        <h3>Mobile Soc</h3>
+                        <div class="example-stats">
+                            <div class="example-stat">
+                                <span class="stat-label">Nodes:</span>
+                                <span class="stat-value">29</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Edges:</span>
+                                <span class="stat-value">29</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Initiators:</span>
+                                <span class="stat-value">8</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Targets:</span>
+                                <span class="stat-value">3</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Routers:</span>
+                                <span class="stat-value">4</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Avg Degree:</span>
+                                <span class="stat-value">2.0</span>
+                            </div>
+                        </div>
+                        <div class="node-types">
+                            <div class="node-types-grid">
+                                
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #A8E6CF;"></div>
+                        <span>Arbiter: 2</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FF6B6B;"></div>
+                        <span>Initiator: 8</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FFD93D;"></div>
+                        <span>NIU: 11</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #95E1D3;"></div>
+                        <span>Router: 4</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #4ECDC4;"></div>
+                        <span>Target: 3</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #C7CEEA;"></div>
+                        <span>WidthConverter: 1</span>
+                    </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="example-card">
+                    <img src="visualizations/small/network_switch.png" alt="network_switch">
+                    <div class="example-info">
+                        <h3>Network Switch</h3>
+                        <div class="example-stats">
+                            <div class="example-stat">
+                                <span class="stat-label">Nodes:</span>
+                                <span class="stat-value">23</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Edges:</span>
+                                <span class="stat-value">22</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Initiators:</span>
+                                <span class="stat-value">8</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Targets:</span>
+                                <span class="stat-value">3</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Routers:</span>
+                                <span class="stat-value">2</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Avg Degree:</span>
+                                <span class="stat-value">1.9</span>
+                            </div>
+                        </div>
+                        <div class="node-types">
+                            <div class="node-types-grid">
+                                
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #A8E6CF;"></div>
+                        <span>Arbiter: 1</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #F38181;"></div>
+                        <span>Decoder: 1</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FF6B6B;"></div>
+                        <span>Initiator: 8</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FFD93D;"></div>
+                        <span>NIU: 8</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #95E1D3;"></div>
+                        <span>Router: 2</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #4ECDC4;"></div>
+                        <span>Target: 3</span>
+                    </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="example-card">
+                    <img src="visualizations/small/smart_camera.png" alt="smart_camera">
+                    <div class="example-info">
+                        <h3>Smart Camera</h3>
+                        <div class="example-stats">
+                            <div class="example-stat">
+                                <span class="stat-label">Nodes:</span>
+                                <span class="stat-value">22</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Edges:</span>
+                                <span class="stat-value">21</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Initiators:</span>
+                                <span class="stat-value">8</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Targets:</span>
+                                <span class="stat-value">3</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Routers:</span>
+                                <span class="stat-value">2</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Avg Degree:</span>
+                                <span class="stat-value">1.9</span>
+                            </div>
+                        </div>
+                        <div class="node-types">
+                            <div class="node-types-grid">
+                                
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #A8E6CF;"></div>
+                        <span>Arbiter: 1</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FF6B6B;"></div>
+                        <span>Initiator: 8</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FFD93D;"></div>
+                        <span>NIU: 8</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #95E1D3;"></div>
+                        <span>Router: 2</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #4ECDC4;"></div>
+                        <span>Target: 3</span>
+                    </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="example-card">
+                    <img src="visualizations/small/wearable.png" alt="wearable">
+                    <div class="example-info">
+                        <h3>Wearable</h3>
+                        <div class="example-stats">
+                            <div class="example-stat">
+                                <span class="stat-label">Nodes:</span>
+                                <span class="stat-value">22</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Edges:</span>
+                                <span class="stat-value">21</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Initiators:</span>
+                                <span class="stat-value">8</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Targets:</span>
+                                <span class="stat-value">3</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Routers:</span>
+                                <span class="stat-value">2</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Avg Degree:</span>
+                                <span class="stat-value">1.9</span>
+                            </div>
+                        </div>
+                        <div class="node-types">
+                            <div class="node-types-grid">
+                                
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #F38181;"></div>
+                        <span>Decoder: 1</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FF6B6B;"></div>
+                        <span>Initiator: 8</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FFD93D;"></div>
+                        <span>NIU: 8</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #95E1D3;"></div>
+                        <span>Router: 2</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #4ECDC4;"></div>
+                        <span>Target: 3</span>
+                    </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="scale-section" id="medium">
+            <h2>Medium-Scale Examples (10개)</h2>
+            <div class="examples-grid">
+
+                <div class="example-card">
+                    <img src="visualizations/medium/5g_baseband.png" alt="5g_baseband">
+                    <div class="example-info">
+                        <h3>5G Baseband</h3>
+                        <div class="example-stats">
+                            <div class="example-stat">
+                                <span class="stat-label">Nodes:</span>
+                                <span class="stat-value">60</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Edges:</span>
+                                <span class="stat-value">52</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Initiators:</span>
+                                <span class="stat-value">18</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Targets:</span>
+                                <span class="stat-value">8</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Routers:</span>
+                                <span class="stat-value">4</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Avg Degree:</span>
+                                <span class="stat-value">1.7</span>
+                            </div>
+                        </div>
+                        <div class="node-types">
+                            <div class="node-types-grid">
+                                
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #A8E6CF;"></div>
+                        <span>Arbiter: 4</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FF6B6B;"></div>
+                        <span>Initiator: 18</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FFD93D;"></div>
+                        <span>NIU: 26</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #95E1D3;"></div>
+                        <span>Router: 4</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #4ECDC4;"></div>
+                        <span>Target: 8</span>
+                    </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="example-card">
+                    <img src="visualizations/medium/ai_accelerator.png" alt="ai_accelerator">
+                    <div class="example-info">
+                        <h3>Ai Accelerator</h3>
+                        <div class="example-stats">
+                            <div class="example-stat">
+                                <span class="stat-label">Nodes:</span>
+                                <span class="stat-value">68</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Edges:</span>
+                                <span class="stat-value">56</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Initiators:</span>
+                                <span class="stat-value">18</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Targets:</span>
+                                <span class="stat-value">12</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Routers:</span>
+                                <span class="stat-value">4</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Avg Degree:</span>
+                                <span class="stat-value">1.6</span>
+                            </div>
+                        </div>
+                        <div class="node-types">
+                            <div class="node-types-grid">
+                                
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #A8E6CF;"></div>
+                        <span>Arbiter: 4</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FF6B6B;"></div>
+                        <span>Initiator: 18</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FFD93D;"></div>
+                        <span>NIU: 30</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #95E1D3;"></div>
+                        <span>Router: 4</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #4ECDC4;"></div>
+                        <span>Target: 12</span>
+                    </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="example-card">
+                    <img src="visualizations/medium/automotive_cockpit.png" alt="automotive_cockpit">
+                    <div class="example-info">
+                        <h3>Automotive Cockpit</h3>
+                        <div class="example-stats">
+                            <div class="example-stat">
+                                <span class="stat-label">Nodes:</span>
+                                <span class="stat-value">57</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Edges:</span>
+                                <span class="stat-value">48</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Initiators:</span>
+                                <span class="stat-value">15</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Targets:</span>
+                                <span class="stat-value">10</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Routers:</span>
+                                <span class="stat-value">4</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Avg Degree:</span>
+                                <span class="stat-value">1.7</span>
+                            </div>
+                        </div>
+                        <div class="node-types">
+                            <div class="node-types-grid">
+                                
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #A8E6CF;"></div>
+                        <span>Arbiter: 3</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FF6B6B;"></div>
+                        <span>Initiator: 15</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FFD93D;"></div>
+                        <span>NIU: 25</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #95E1D3;"></div>
+                        <span>Router: 4</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #4ECDC4;"></div>
+                        <span>Target: 10</span>
+                    </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="example-card">
+                    <img src="visualizations/medium/datacenter_nic.png" alt="datacenter_nic">
+                    <div class="example-info">
+                        <h3>Datacenter Nic</h3>
+                        <div class="example-stats">
+                            <div class="example-stat">
+                                <span class="stat-label">Nodes:</span>
+                                <span class="stat-value">48</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Edges:</span>
+                                <span class="stat-value">47</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Initiators:</span>
+                                <span class="stat-value">14</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Targets:</span>
+                                <span class="stat-value">6</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Routers:</span>
+                                <span class="stat-value">4</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Avg Degree:</span>
+                                <span class="stat-value">2.0</span>
+                            </div>
+                        </div>
+                        <div class="node-types">
+                            <div class="node-types-grid">
+                                
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #A8E6CF;"></div>
+                        <span>Arbiter: 3</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #F38181;"></div>
+                        <span>Decoder: 1</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FF6B6B;"></div>
+                        <span>Initiator: 14</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FFD93D;"></div>
+                        <span>NIU: 20</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #95E1D3;"></div>
+                        <span>Router: 4</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #4ECDC4;"></div>
+                        <span>Target: 6</span>
+                    </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="example-card">
+                    <img src="visualizations/medium/edge_gateway.png" alt="edge_gateway">
+                    <div class="example-info">
+                        <h3>Edge Gateway</h3>
+                        <div class="example-stats">
+                            <div class="example-stat">
+                                <span class="stat-label">Nodes:</span>
+                                <span class="stat-value">49</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Edges:</span>
+                                <span class="stat-value">42</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Initiators:</span>
+                                <span class="stat-value">13</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Targets:</span>
+                                <span class="stat-value">8</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Routers:</span>
+                                <span class="stat-value">4</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Avg Degree:</span>
+                                <span class="stat-value">1.7</span>
+                            </div>
+                        </div>
+                        <div class="node-types">
+                            <div class="node-types-grid">
+                                
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #A8E6CF;"></div>
+                        <span>Arbiter: 3</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FF6B6B;"></div>
+                        <span>Initiator: 13</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FFD93D;"></div>
+                        <span>NIU: 21</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #95E1D3;"></div>
+                        <span>Router: 4</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #4ECDC4;"></div>
+                        <span>Target: 8</span>
+                    </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="example-card">
+                    <img src="visualizations/medium/industrial_controller.png" alt="industrial_controller">
+                    <div class="example-info">
+                        <h3>Industrial Controller</h3>
+                        <div class="example-stats">
+                            <div class="example-stat">
+                                <span class="stat-label">Nodes:</span>
+                                <span class="stat-value">53</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Edges:</span>
+                                <span class="stat-value">45</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Initiators:</span>
+                                <span class="stat-value">14</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Targets:</span>
+                                <span class="stat-value">9</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Routers:</span>
+                                <span class="stat-value">4</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Avg Degree:</span>
+                                <span class="stat-value">1.7</span>
+                            </div>
+                        </div>
+                        <div class="node-types">
+                            <div class="node-types-grid">
+                                
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #A8E6CF;"></div>
+                        <span>Arbiter: 3</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FF6B6B;"></div>
+                        <span>Initiator: 14</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FFD93D;"></div>
+                        <span>NIU: 23</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #95E1D3;"></div>
+                        <span>Router: 4</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #4ECDC4;"></div>
+                        <span>Target: 9</span>
+                    </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="example-card">
+                    <img src="visualizations/medium/media_server.png" alt="media_server">
+                    <div class="example-info">
+                        <h3>Media Server</h3>
+                        <div class="example-stats">
+                            <div class="example-stat">
+                                <span class="stat-label">Nodes:</span>
+                                <span class="stat-value">62</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Edges:</span>
+                                <span class="stat-value">51</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Initiators:</span>
+                                <span class="stat-value">16</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Targets:</span>
+                                <span class="stat-value">11</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Routers:</span>
+                                <span class="stat-value">4</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Avg Degree:</span>
+                                <span class="stat-value">1.6</span>
+                            </div>
+                        </div>
+                        <div class="node-types">
+                            <div class="node-types-grid">
+                                
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #A8E6CF;"></div>
+                        <span>Arbiter: 4</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FF6B6B;"></div>
+                        <span>Initiator: 16</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FFD93D;"></div>
+                        <span>NIU: 27</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #95E1D3;"></div>
+                        <span>Router: 4</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #4ECDC4;"></div>
+                        <span>Target: 11</span>
+                    </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="example-card">
+                    <img src="visualizations/medium/robotics_controller.png" alt="robotics_controller">
+                    <div class="example-info">
+                        <h3>Robotics Controller</h3>
+                        <div class="example-stats">
+                            <div class="example-stat">
+                                <span class="stat-label">Nodes:</span>
+                                <span class="stat-value">57</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Edges:</span>
+                                <span class="stat-value">48</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Initiators:</span>
+                                <span class="stat-value">15</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Targets:</span>
+                                <span class="stat-value">10</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Routers:</span>
+                                <span class="stat-value">4</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Avg Degree:</span>
+                                <span class="stat-value">1.7</span>
+                            </div>
+                        </div>
+                        <div class="node-types">
+                            <div class="node-types-grid">
+                                
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #A8E6CF;"></div>
+                        <span>Arbiter: 3</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FF6B6B;"></div>
+                        <span>Initiator: 15</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FFD93D;"></div>
+                        <span>NIU: 25</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #95E1D3;"></div>
+                        <span>Router: 4</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #4ECDC4;"></div>
+                        <span>Target: 10</span>
+                    </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="example-card">
+                    <img src="visualizations/medium/server_soc.png" alt="server_soc">
+                    <div class="example-info">
+                        <h3>Server Soc</h3>
+                        <div class="example-stats">
+                            <div class="example-stat">
+                                <span class="stat-label">Nodes:</span>
+                                <span class="stat-value">64</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Edges:</span>
+                                <span class="stat-value">67</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Initiators:</span>
+                                <span class="stat-value">16</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Targets:</span>
+                                <span class="stat-value">8</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Routers:</span>
+                                <span class="stat-value">6</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Avg Degree:</span>
+                                <span class="stat-value">2.1</span>
+                            </div>
+                        </div>
+                        <div class="node-types">
+                            <div class="node-types-grid">
+                                
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #A8E6CF;"></div>
+                        <span>Arbiter: 4</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FFEAA7;"></div>
+                        <span>ClockConverter: 2</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #F38181;"></div>
+                        <span>Decoder: 2</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FF6B6B;"></div>
+                        <span>Initiator: 16</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FFD93D;"></div>
+                        <span>NIU: 24</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #95E1D3;"></div>
+                        <span>Router: 6</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #4ECDC4;"></div>
+                        <span>Target: 8</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #C7CEEA;"></div>
+                        <span>WidthConverter: 2</span>
+                    </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="example-card">
+                    <img src="visualizations/medium/video_conferencing.png" alt="video_conferencing">
+                    <div class="example-info">
+                        <h3>Video Conferencing</h3>
+                        <div class="example-stats">
+                            <div class="example-stat">
+                                <span class="stat-label">Nodes:</span>
+                                <span class="stat-value">45</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Edges:</span>
+                                <span class="stat-value">39</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Initiators:</span>
+                                <span class="stat-value">12</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Targets:</span>
+                                <span class="stat-value">7</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Routers:</span>
+                                <span class="stat-value">4</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Avg Degree:</span>
+                                <span class="stat-value">1.7</span>
+                            </div>
+                        </div>
+                        <div class="node-types">
+                            <div class="node-types-grid">
+                                
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #A8E6CF;"></div>
+                        <span>Arbiter: 3</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FF6B6B;"></div>
+                        <span>Initiator: 12</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FFD93D;"></div>
+                        <span>NIU: 19</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #95E1D3;"></div>
+                        <span>Router: 4</span>
+                    </div>
+
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #4ECDC4;"></div>
+                        <span>Target: 7</span>
+                    </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="scale-section" id="large">
+            <h2>Large-Scale Examples (10개)</h2>
+            <div class="examples-grid">
+
+                <div class="example-card">
+                    <img src="visualizations/large/ai_training_chip.png" alt="ai_training_chip">
+                    <div class="example-info">
+                        <h3>Ai Training Chip</h3>
+                        <div class="example-stats">
+                            <div class="example-stat">
+                                <span class="stat-label">Nodes:</span>
+                                <span class="stat-value">10</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Edges:</span>
+                                <span class="stat-value">0</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Initiators:</span>
+                                <span class="stat-value">10</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Targets:</span>
+                                <span class="stat-value">0</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Routers:</span>
+                                <span class="stat-value">0</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Avg Degree:</span>
+                                <span class="stat-value">0.0</span>
+                            </div>
+                        </div>
+                        <div class="node-types">
+                            <div class="node-types-grid">
+                                
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FF6B6B;"></div>
+                        <span>Initiator: 10</span>
+                    </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="example-card">
+                    <img src="visualizations/large/autonomous_vehicle_soc.png" alt="autonomous_vehicle_soc">
+                    <div class="example-info">
+                        <h3>Autonomous Vehicle Soc</h3>
+                        <div class="example-stats">
+                            <div class="example-stat">
+                                <span class="stat-label">Nodes:</span>
+                                <span class="stat-value">10</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Edges:</span>
+                                <span class="stat-value">0</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Initiators:</span>
+                                <span class="stat-value">10</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Targets:</span>
+                                <span class="stat-value">0</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Routers:</span>
+                                <span class="stat-value">0</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Avg Degree:</span>
+                                <span class="stat-value">0.0</span>
+                            </div>
+                        </div>
+                        <div class="node-types">
+                            <div class="node-types-grid">
+                                
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FF6B6B;"></div>
+                        <span>Initiator: 10</span>
+                    </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="example-card">
+                    <img src="visualizations/large/datacenter_soc.png" alt="datacenter_soc">
+                    <div class="example-info">
+                        <h3>Datacenter Soc</h3>
+                        <div class="example-stats">
+                            <div class="example-stat">
+                                <span class="stat-label">Nodes:</span>
+                                <span class="stat-value">10</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Edges:</span>
+                                <span class="stat-value">0</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Initiators:</span>
+                                <span class="stat-value">10</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Targets:</span>
+                                <span class="stat-value">0</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Routers:</span>
+                                <span class="stat-value">0</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Avg Degree:</span>
+                                <span class="stat-value">0.0</span>
+                            </div>
+                        </div>
+                        <div class="node-types">
+                            <div class="node-types-grid">
+                                
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FF6B6B;"></div>
+                        <span>Initiator: 10</span>
+                    </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="example-card">
+                    <img src="visualizations/large/gpu_compute.png" alt="gpu_compute">
+                    <div class="example-info">
+                        <h3>Gpu Compute</h3>
+                        <div class="example-stats">
+                            <div class="example-stat">
+                                <span class="stat-label">Nodes:</span>
+                                <span class="stat-value">10</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Edges:</span>
+                                <span class="stat-value">0</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Initiators:</span>
+                                <span class="stat-value">10</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Targets:</span>
+                                <span class="stat-value">0</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Routers:</span>
+                                <span class="stat-value">0</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Avg Degree:</span>
+                                <span class="stat-value">0.0</span>
+                            </div>
+                        </div>
+                        <div class="node-types">
+                            <div class="node-types-grid">
+                                
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FF6B6B;"></div>
+                        <span>Initiator: 10</span>
+                    </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="example-card">
+                    <img src="visualizations/large/hpc_node.png" alt="hpc_node">
+                    <div class="example-info">
+                        <h3>Hpc Node</h3>
+                        <div class="example-stats">
+                            <div class="example-stat">
+                                <span class="stat-label">Nodes:</span>
+                                <span class="stat-value">10</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Edges:</span>
+                                <span class="stat-value">0</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Initiators:</span>
+                                <span class="stat-value">10</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Targets:</span>
+                                <span class="stat-value">0</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Routers:</span>
+                                <span class="stat-value">0</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Avg Degree:</span>
+                                <span class="stat-value">0.0</span>
+                            </div>
+                        </div>
+                        <div class="node-types">
+                            <div class="node-types-grid">
+                                
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FF6B6B;"></div>
+                        <span>Initiator: 10</span>
+                    </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="example-card">
+                    <img src="visualizations/large/ml_inference_cluster.png" alt="ml_inference_cluster">
+                    <div class="example-info">
+                        <h3>Ml Inference Cluster</h3>
+                        <div class="example-stats">
+                            <div class="example-stat">
+                                <span class="stat-label">Nodes:</span>
+                                <span class="stat-value">10</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Edges:</span>
+                                <span class="stat-value">0</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Initiators:</span>
+                                <span class="stat-value">10</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Targets:</span>
+                                <span class="stat-value">0</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Routers:</span>
+                                <span class="stat-value">0</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Avg Degree:</span>
+                                <span class="stat-value">0.0</span>
+                            </div>
+                        </div>
+                        <div class="node-types">
+                            <div class="node-types-grid">
+                                
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FF6B6B;"></div>
+                        <span>Initiator: 10</span>
+                    </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="example-card">
+                    <img src="visualizations/large/network_processor.png" alt="network_processor">
+                    <div class="example-info">
+                        <h3>Network Processor</h3>
+                        <div class="example-stats">
+                            <div class="example-stat">
+                                <span class="stat-label">Nodes:</span>
+                                <span class="stat-value">10</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Edges:</span>
+                                <span class="stat-value">0</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Initiators:</span>
+                                <span class="stat-value">10</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Targets:</span>
+                                <span class="stat-value">0</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Routers:</span>
+                                <span class="stat-value">0</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Avg Degree:</span>
+                                <span class="stat-value">0.0</span>
+                            </div>
+                        </div>
+                        <div class="node-types">
+                            <div class="node-types-grid">
+                                
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FF6B6B;"></div>
+                        <span>Initiator: 10</span>
+                    </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="example-card">
+                    <img src="visualizations/large/storage_controller.png" alt="storage_controller">
+                    <div class="example-info">
+                        <h3>Storage Controller</h3>
+                        <div class="example-stats">
+                            <div class="example-stat">
+                                <span class="stat-label">Nodes:</span>
+                                <span class="stat-value">10</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Edges:</span>
+                                <span class="stat-value">0</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Initiators:</span>
+                                <span class="stat-value">10</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Targets:</span>
+                                <span class="stat-value">0</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Routers:</span>
+                                <span class="stat-value">0</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Avg Degree:</span>
+                                <span class="stat-value">0.0</span>
+                            </div>
+                        </div>
+                        <div class="node-types">
+                            <div class="node-types-grid">
+                                
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FF6B6B;"></div>
+                        <span>Initiator: 10</span>
+                    </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="example-card">
+                    <img src="visualizations/large/switch_fabric.png" alt="switch_fabric">
+                    <div class="example-info">
+                        <h3>Switch Fabric</h3>
+                        <div class="example-stats">
+                            <div class="example-stat">
+                                <span class="stat-label">Nodes:</span>
+                                <span class="stat-value">10</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Edges:</span>
+                                <span class="stat-value">0</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Initiators:</span>
+                                <span class="stat-value">10</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Targets:</span>
+                                <span class="stat-value">0</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Routers:</span>
+                                <span class="stat-value">0</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Avg Degree:</span>
+                                <span class="stat-value">0.0</span>
+                            </div>
+                        </div>
+                        <div class="node-types">
+                            <div class="node-types-grid">
+                                
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FF6B6B;"></div>
+                        <span>Initiator: 10</span>
+                    </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="example-card">
+                    <img src="visualizations/large/telecom_basestation.png" alt="telecom_basestation">
+                    <div class="example-info">
+                        <h3>Telecom Basestation</h3>
+                        <div class="example-stats">
+                            <div class="example-stat">
+                                <span class="stat-label">Nodes:</span>
+                                <span class="stat-value">10</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Edges:</span>
+                                <span class="stat-value">0</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Initiators:</span>
+                                <span class="stat-value">10</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Targets:</span>
+                                <span class="stat-value">0</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Routers:</span>
+                                <span class="stat-value">0</span>
+                            </div>
+                            <div class="example-stat">
+                                <span class="stat-label">Avg Degree:</span>
+                                <span class="stat-value">0.0</span>
+                            </div>
+                        </div>
+                        <div class="node-types">
+                            <div class="node-types-grid">
+                                
+                    <div class="node-type-item">
+                        <div class="node-type-color" style="background: #FF6B6B;"></div>
+                        <span>Initiator: 10</span>
+                    </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <div class="footer">
+        <p>🤖 Generated with Claude Code</p>
+        <p style="margin-top: 0.5rem; font-size: 0.9rem;">PyMTL3-net NoC Synthesis Examples</p>
+    </div>
+</body>
+</html>
