@@ -301,14 +301,24 @@ class TopologyGenerator:
         Optimize topology based on bandwidth requirements.
 
         Strategy:
-        - Identify high-bandwidth flows
-        - Add dedicated paths for high-bandwidth initiator-target pairs
-        - Use shared crossbar for low-bandwidth flows
-        - Insert arbiters where multiple initiators share a path
+        1. Analyze traffic flows and categorize
+        2. High-BW flows (>50 GB/s): Add dedicated routers
+        3. Medium-BW flows (5-50 GB/s): Keep crossbar
+        4. Low-BW flows (<5 GB/s): Group with arbiters
+        5. Measure optimization impact
         """
         print("\n" + "="*70)
         print("Optimizing for bandwidth...")
         print("="*70)
+
+        # Store original metrics
+        original_nodes = len(self.nodes)
+        original_edges = len(self.edges)
+        crossbar_id = self.node_map.get('Crossbar')
+
+        if not crossbar_id:
+            print("  No crossbar found, skipping optimization")
+            return
 
         # Analyze traffic flows
         flow_map = {}  # (src, dst) -> bandwidth
@@ -316,24 +326,157 @@ class TopologyGenerator:
             key = (flow.src, flow.dst)
             flow_map[key] = flow_map.get(key, 0) + flow.bandwidth
 
-        # Sort flows by bandwidth
-        sorted_flows = sorted(flow_map.items(), key=lambda x: x[1], reverse=True)
+        # Categorize flows
+        high_bw_threshold = 50.0  # GB/s - dedicated path
+        low_bw_threshold = 5.0    # GB/s - shared with arbiter
 
-        print(f"\nTraffic flow analysis:")
-        print(f"  Total flows: {len(sorted_flows)}")
-
-        high_bw_threshold = 5.0  # GB/s
-        high_bw_flows = [(src, dst, bw) for (src, dst), bw in sorted_flows
+        high_bw_flows = [(src, dst, bw) for (src, dst), bw in flow_map.items()
                          if bw >= high_bw_threshold]
+        medium_bw_flows = [(src, dst, bw) for (src, dst), bw in flow_map.items()
+                          if low_bw_threshold <= bw < high_bw_threshold]
+        low_bw_flows = [(src, dst, bw) for (src, dst), bw in flow_map.items()
+                        if bw < low_bw_threshold]
 
+        print(f"\nTraffic flow categorization:")
+        print(f"  High-BW (>= {high_bw_threshold} GB/s): {len(high_bw_flows)} flows")
+        print(f"  Medium-BW ({low_bw_threshold}-{high_bw_threshold} GB/s): {len(medium_bw_flows)} flows")
+        print(f"  Low-BW (< {low_bw_threshold} GB/s): {len(low_bw_flows)} flows")
+
+        # Optimization 1: Add dedicated routers for high-BW flows
         if high_bw_flows:
-            print(f"  High-bandwidth flows (>= {high_bw_threshold} GB/s): {len(high_bw_flows)}")
-            for src, dst, bw in high_bw_flows[:5]:
-                print(f"    {src} → {dst}: {bw:.1f} GB/s")
+            print(f"\n1. Adding dedicated paths for high-BW flows...")
+            self._add_dedicated_paths(high_bw_flows, crossbar_id)
+        else:
+            print(f"\n1. No high-BW flows requiring dedicated paths")
 
-        # For now, full crossbar is already optimal for most cases
-        # Future: can add dedicated routers for high-BW pairs
-        print(f"\n✓ Optimization complete (full crossbar is near-optimal)")
+        # Optimization 2: Group low-BW flows with arbiters
+        if low_bw_flows and len(low_bw_flows) > 3:
+            print(f"\n2. Grouping low-BW flows with arbiters...")
+            self._add_arbiters_for_low_bw(low_bw_flows, crossbar_id)
+        else:
+            print(f"\n2. Too few low-BW flows to optimize")
+
+        # Optimization 3: Remove unused crossbar connections
+        print(f"\n3. Removing unused crossbar connections...")
+        self._remove_unused_crossbar_connections(crossbar_id, high_bw_flows, low_bw_flows)
+
+        # Print optimization results
+        new_nodes = len(self.nodes)
+        new_edges = len(self.edges)
+
+        print(f"\n" + "="*70)
+        print("OPTIMIZATION RESULTS")
+        print(f"="*70)
+        print(f"Nodes: {original_nodes} → {new_nodes} ({new_nodes - original_nodes:+d})")
+        print(f"Edges: {original_edges} → {new_edges} ({new_edges - original_edges:+d})")
+
+        if crossbar_id < len(self.nodes):
+            crossbar = self.nodes[crossbar_id]
+            old_ports = original_nodes - 1  # Approximation
+            new_ports = crossbar.get('num_ports', 0)
+            print(f"Crossbar ports: {old_ports} → {new_ports} ({new_ports - old_ports:+d})")
+
+        print(f"\n✓ Bandwidth optimization complete")
+
+    def _add_dedicated_paths(self, high_bw_flows, crossbar_id):
+        """Add dedicated routers for high-bandwidth flows"""
+        for src_name, dst_name, bandwidth in high_bw_flows:
+            src_niu_id = self.node_map.get(f'{src_name}_NIU')
+            dst_niu_id = self.node_map.get(f'{dst_name}_NIU')
+
+            if not src_niu_id or not dst_niu_id:
+                continue
+
+            # Create dedicated router
+            router_id = self._add_node(
+                'Router',
+                f'{src_name}_{dst_name}_Router',
+                width=256,  # High-BW routers are wider
+                clock_domain='fast',
+                num_ports=2
+            )
+
+            # Remove old crossbar connections for this flow
+            self.edges = [e for e in self.edges
+                         if not ((e['src'] == src_niu_id and e['dst'] == crossbar_id) or
+                                (e['src'] == crossbar_id and e['dst'] == dst_niu_id))]
+
+            # Add dedicated path: src_NIU → dedicated_router → dst_NIU
+            src_node = next(n for n in self.nodes if n['id'] == src_niu_id)
+            dst_node = next(n for n in self.nodes if n['id'] == dst_niu_id)
+
+            self._add_edge(src_niu_id, router_id, src_node['width'], 1)
+            self._add_edge(router_id, dst_niu_id, dst_node['width'], 1)
+
+            print(f"  ✓ {src_name} → {dst_name}: {bandwidth:.1f} GB/s (dedicated router)")
+
+    def _add_arbiters_for_low_bw(self, low_bw_flows, crossbar_id):
+        """Group low-bandwidth flows using arbiters"""
+        # Group flows by target
+        target_groups = {}
+        for src_name, dst_name, bandwidth in low_bw_flows:
+            if dst_name not in target_groups:
+                target_groups[dst_name] = []
+            target_groups[dst_name].append((src_name, bandwidth))
+
+        max_arbiter_inputs = self.constraints.get('max_arbiter_inputs', 4)
+
+        for dst_name, sources in target_groups.items():
+            if len(sources) < 2:
+                continue  # Need at least 2 sources to benefit from arbiter
+
+            dst_niu_id = self.node_map.get(f'{dst_name}_NIU')
+            if not dst_niu_id:
+                continue
+
+            # Group sources into arbiters
+            for i in range(0, len(sources), max_arbiter_inputs):
+                group = sources[i:i+max_arbiter_inputs]
+                if len(group) < 2:
+                    continue
+
+                # Create arbiter
+                arbiter_id = self._add_node(
+                    'Arbiter',
+                    f'{dst_name}_Arbiter_{i//max_arbiter_inputs}',
+                    num_inputs=len(group),
+                    width=64,
+                    clock_domain='fast',
+                    policy='round_robin'
+                )
+
+                # Connect sources to arbiter
+                for src_name, bw in group:
+                    src_niu_id = self.node_map.get(f'{src_name}_NIU')
+                    if not src_niu_id:
+                        continue
+
+                    # Remove old crossbar connection
+                    self.edges = [e for e in self.edges
+                                 if not (e['src'] == src_niu_id and e['dst'] == crossbar_id)]
+
+                    # Connect to arbiter
+                    self._add_edge(src_niu_id, arbiter_id, 64, 1)
+
+                # Connect arbiter to crossbar (or directly to target if possible)
+                self._add_edge(arbiter_id, crossbar_id, 64, 2)
+
+                src_names = [s[0] for s in group]
+                print(f"  ✓ [{', '.join(src_names)}] → {dst_name} (via arbiter)")
+
+    def _remove_unused_crossbar_connections(self, crossbar_id, high_bw_flows, low_bw_flows):
+        """Remove crossbar connections that have been optimized away"""
+        # Count connections to crossbar
+        in_edges = len([e for e in self.edges if e['dst'] == crossbar_id])
+        out_edges = len([e for e in self.edges if e['src'] == crossbar_id])
+
+        # Update crossbar port count
+        if crossbar_id < len(self.nodes):
+            self.nodes[crossbar_id]['num_ports'] = in_edges + out_edges
+
+        removed_flows = len(high_bw_flows) + len([f for f in low_bw_flows if len(f) > 0])
+        print(f"  Removed {removed_flows} flows from crossbar")
+        print(f"  Crossbar now has {in_edges} input + {out_edges} output ports")
 
     def get_topology_config(self) -> Dict[str, Any]:
         """Export topology as configuration dictionary"""

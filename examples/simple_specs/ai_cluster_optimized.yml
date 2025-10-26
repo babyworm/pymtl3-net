@@ -1,0 +1,858 @@
+network: Irregular
+num_nodes: 85
+nodes:
+- id: 0
+  type: Initiator
+  name: AI0
+  avg_throughput: 100.0
+  max_throughput: 200.0
+  latency_requirement: 50
+  priority: 0
+  traffic_pattern: bursty
+- id: 1
+  type: NIU
+  name: AI0_NIU
+  width: 512
+  clock_domain: fast
+- id: 2
+  type: Initiator
+  name: AI1
+  avg_throughput: 100.0
+  max_throughput: 200.0
+  latency_requirement: 50
+  priority: 0
+  traffic_pattern: bursty
+- id: 3
+  type: NIU
+  name: AI1_NIU
+  width: 512
+  clock_domain: fast
+- id: 4
+  type: Initiator
+  name: AI2
+  avg_throughput: 100.0
+  max_throughput: 200.0
+  latency_requirement: 50
+  priority: 0
+  traffic_pattern: bursty
+- id: 5
+  type: NIU
+  name: AI2_NIU
+  width: 512
+  clock_domain: fast
+- id: 6
+  type: Initiator
+  name: AI3
+  avg_throughput: 100.0
+  max_throughput: 200.0
+  latency_requirement: 50
+  priority: 0
+  traffic_pattern: bursty
+- id: 7
+  type: NIU
+  name: AI3_NIU
+  width: 512
+  clock_domain: fast
+- id: 8
+  type: Initiator
+  name: AI4
+  avg_throughput: 100.0
+  max_throughput: 200.0
+  latency_requirement: 50
+  priority: 0
+  traffic_pattern: bursty
+- id: 9
+  type: NIU
+  name: AI4_NIU
+  width: 512
+  clock_domain: fast
+- id: 10
+  type: Initiator
+  name: AI5
+  avg_throughput: 100.0
+  max_throughput: 200.0
+  latency_requirement: 50
+  priority: 0
+  traffic_pattern: bursty
+- id: 11
+  type: NIU
+  name: AI5_NIU
+  width: 512
+  clock_domain: fast
+- id: 12
+  type: Initiator
+  name: AI6
+  avg_throughput: 100.0
+  max_throughput: 200.0
+  latency_requirement: 50
+  priority: 0
+  traffic_pattern: bursty
+- id: 13
+  type: NIU
+  name: AI6_NIU
+  width: 512
+  clock_domain: fast
+- id: 14
+  type: Initiator
+  name: AI7
+  avg_throughput: 100.0
+  max_throughput: 200.0
+  latency_requirement: 50
+  priority: 0
+  traffic_pattern: bursty
+- id: 15
+  type: NIU
+  name: AI7_NIU
+  width: 512
+  clock_domain: fast
+- id: 16
+  type: Initiator
+  name: CPU0
+  avg_throughput: 2.0
+  max_throughput: 4.0
+  latency_requirement: 15
+  priority: 1
+  traffic_pattern: bursty
+- id: 17
+  type: NIU
+  name: CPU0_NIU
+  width: 32
+  clock_domain: fast
+- id: 18
+  type: Initiator
+  name: CPU1
+  avg_throughput: 2.0
+  max_throughput: 4.0
+  latency_requirement: 15
+  priority: 1
+  traffic_pattern: bursty
+- id: 19
+  type: NIU
+  name: CPU1_NIU
+  width: 32
+  clock_domain: fast
+- id: 20
+  type: Initiator
+  name: CPU2
+  avg_throughput: 2.0
+  max_throughput: 4.0
+  latency_requirement: 15
+  priority: 1
+  traffic_pattern: bursty
+- id: 21
+  type: NIU
+  name: CPU2_NIU
+  width: 32
+  clock_domain: fast
+- id: 22
+  type: Initiator
+  name: CPU3
+  avg_throughput: 2.0
+  max_throughput: 4.0
+  latency_requirement: 15
+  priority: 1
+  traffic_pattern: bursty
+- id: 23
+  type: NIU
+  name: CPU3_NIU
+  width: 32
+  clock_domain: fast
+- id: 24
+  type: Initiator
+  name: CPU4
+  avg_throughput: 2.0
+  max_throughput: 4.0
+  latency_requirement: 15
+  priority: 1
+  traffic_pattern: bursty
+- id: 25
+  type: NIU
+  name: CPU4_NIU
+  width: 32
+  clock_domain: fast
+- id: 26
+  type: Initiator
+  name: CPU5
+  avg_throughput: 2.0
+  max_throughput: 4.0
+  latency_requirement: 15
+  priority: 1
+  traffic_pattern: bursty
+- id: 27
+  type: NIU
+  name: CPU5_NIU
+  width: 32
+  clock_domain: fast
+- id: 28
+  type: Initiator
+  name: CPU6
+  avg_throughput: 2.0
+  max_throughput: 4.0
+  latency_requirement: 15
+  priority: 1
+  traffic_pattern: bursty
+- id: 29
+  type: NIU
+  name: CPU6_NIU
+  width: 32
+  clock_domain: fast
+- id: 30
+  type: Initiator
+  name: CPU7
+  avg_throughput: 2.0
+  max_throughput: 4.0
+  latency_requirement: 15
+  priority: 1
+  traffic_pattern: bursty
+- id: 31
+  type: NIU
+  name: CPU7_NIU
+  width: 32
+  clock_domain: fast
+- id: 32
+  type: Initiator
+  name: CPU8
+  avg_throughput: 2.0
+  max_throughput: 4.0
+  latency_requirement: 15
+  priority: 1
+  traffic_pattern: bursty
+- id: 33
+  type: NIU
+  name: CPU8_NIU
+  width: 32
+  clock_domain: fast
+- id: 34
+  type: Initiator
+  name: CPU9
+  avg_throughput: 2.0
+  max_throughput: 4.0
+  latency_requirement: 15
+  priority: 1
+  traffic_pattern: bursty
+- id: 35
+  type: NIU
+  name: CPU9_NIU
+  width: 32
+  clock_domain: fast
+- id: 36
+  type: Initiator
+  name: CPU10
+  avg_throughput: 2.0
+  max_throughput: 4.0
+  latency_requirement: 15
+  priority: 1
+  traffic_pattern: bursty
+- id: 37
+  type: NIU
+  name: CPU10_NIU
+  width: 32
+  clock_domain: fast
+- id: 38
+  type: Initiator
+  name: CPU11
+  avg_throughput: 2.0
+  max_throughput: 4.0
+  latency_requirement: 15
+  priority: 1
+  traffic_pattern: bursty
+- id: 39
+  type: NIU
+  name: CPU11_NIU
+  width: 32
+  clock_domain: fast
+- id: 40
+  type: Initiator
+  name: CPU12
+  avg_throughput: 2.0
+  max_throughput: 4.0
+  latency_requirement: 15
+  priority: 1
+  traffic_pattern: bursty
+- id: 41
+  type: NIU
+  name: CPU12_NIU
+  width: 32
+  clock_domain: fast
+- id: 42
+  type: Initiator
+  name: CPU13
+  avg_throughput: 2.0
+  max_throughput: 4.0
+  latency_requirement: 15
+  priority: 1
+  traffic_pattern: bursty
+- id: 43
+  type: NIU
+  name: CPU13_NIU
+  width: 32
+  clock_domain: fast
+- id: 44
+  type: Initiator
+  name: CPU14
+  avg_throughput: 2.0
+  max_throughput: 4.0
+  latency_requirement: 15
+  priority: 1
+  traffic_pattern: bursty
+- id: 45
+  type: NIU
+  name: CPU14_NIU
+  width: 32
+  clock_domain: fast
+- id: 46
+  type: Initiator
+  name: CPU15
+  avg_throughput: 2.0
+  max_throughput: 4.0
+  latency_requirement: 15
+  priority: 1
+  traffic_pattern: bursty
+- id: 47
+  type: NIU
+  name: CPU15_NIU
+  width: 32
+  clock_domain: fast
+- id: 48
+  type: Target
+  name: HBM0
+  max_bandwidth: 307.2
+  latency: 40
+  size: 4
+  type_detail: HBM2
+- id: 49
+  type: NIU
+  name: HBM0_NIU
+  width: 512
+  clock_domain: fast
+- id: 50
+  type: Target
+  name: HBM1
+  max_bandwidth: 307.2
+  latency: 40
+  size: 4
+  type_detail: HBM2
+- id: 51
+  type: NIU
+  name: HBM1_NIU
+  width: 512
+  clock_domain: fast
+- id: 52
+  type: Target
+  name: HBM2
+  max_bandwidth: 307.2
+  latency: 40
+  size: 4
+  type_detail: HBM2
+- id: 53
+  type: NIU
+  name: HBM2_NIU
+  width: 512
+  clock_domain: fast
+- id: 54
+  type: Target
+  name: HBM3
+  max_bandwidth: 307.2
+  latency: 40
+  size: 4
+  type_detail: HBM2
+- id: 55
+  type: NIU
+  name: HBM3_NIU
+  width: 512
+  clock_domain: fast
+- id: 56
+  type: Target
+  name: HBM4
+  max_bandwidth: 307.2
+  latency: 40
+  size: 4
+  type_detail: HBM2
+- id: 57
+  type: NIU
+  name: HBM4_NIU
+  width: 512
+  clock_domain: fast
+- id: 58
+  type: Target
+  name: HBM5
+  max_bandwidth: 307.2
+  latency: 40
+  size: 4
+  type_detail: HBM2
+- id: 59
+  type: NIU
+  name: HBM5_NIU
+  width: 512
+  clock_domain: fast
+- id: 60
+  type: Target
+  name: HBM6
+  max_bandwidth: 307.2
+  latency: 40
+  size: 4
+  type_detail: HBM2
+- id: 61
+  type: NIU
+  name: HBM6_NIU
+  width: 512
+  clock_domain: fast
+- id: 62
+  type: Target
+  name: HBM7
+  max_bandwidth: 307.2
+  latency: 40
+  size: 4
+  type_detail: HBM2
+- id: 63
+  type: NIU
+  name: HBM7_NIU
+  width: 512
+  clock_domain: fast
+- id: 64
+  type: Target
+  name: DDR0
+  max_bandwidth: 25.6
+  latency: 100
+  size: 32
+  type_detail: DDR4
+- id: 65
+  type: NIU
+  name: DDR0_NIU
+  width: 128
+  clock_domain: fast
+- id: 66
+  type: Target
+  name: DDR1
+  max_bandwidth: 25.6
+  latency: 100
+  size: 32
+  type_detail: DDR4
+- id: 67
+  type: NIU
+  name: DDR1_NIU
+  width: 128
+  clock_domain: fast
+- id: 68
+  type: Target
+  name: DDR2
+  max_bandwidth: 25.6
+  latency: 100
+  size: 32
+  type_detail: DDR4
+- id: 69
+  type: NIU
+  name: DDR2_NIU
+  width: 128
+  clock_domain: fast
+- id: 70
+  type: Target
+  name: DDR3
+  max_bandwidth: 25.6
+  latency: 100
+  size: 32
+  type_detail: DDR4
+- id: 71
+  type: NIU
+  name: DDR3_NIU
+  width: 128
+  clock_domain: fast
+- id: 72
+  type: Router
+  name: Crossbar
+  width: 512
+  clock_domain: fast
+  num_ports: 8
+- id: 73
+  type: Router
+  name: AI0_HBM0_Router
+  width: 256
+  clock_domain: fast
+  num_ports: 2
+- id: 74
+  type: Router
+  name: AI1_HBM1_Router
+  width: 256
+  clock_domain: fast
+  num_ports: 2
+- id: 75
+  type: Router
+  name: AI2_HBM2_Router
+  width: 256
+  clock_domain: fast
+  num_ports: 2
+- id: 76
+  type: Router
+  name: AI3_HBM3_Router
+  width: 256
+  clock_domain: fast
+  num_ports: 2
+- id: 77
+  type: Router
+  name: AI4_HBM4_Router
+  width: 256
+  clock_domain: fast
+  num_ports: 2
+- id: 78
+  type: Router
+  name: AI5_HBM5_Router
+  width: 256
+  clock_domain: fast
+  num_ports: 2
+- id: 79
+  type: Router
+  name: AI6_HBM6_Router
+  width: 256
+  clock_domain: fast
+  num_ports: 2
+- id: 80
+  type: Router
+  name: AI7_HBM7_Router
+  width: 256
+  clock_domain: fast
+  num_ports: 2
+- id: 81
+  type: Arbiter
+  name: DDR0_Arbiter_0
+  num_inputs: 4
+  width: 64
+  clock_domain: fast
+  policy: round_robin
+- id: 82
+  type: Arbiter
+  name: DDR1_Arbiter_0
+  num_inputs: 4
+  width: 64
+  clock_domain: fast
+  policy: round_robin
+- id: 83
+  type: Arbiter
+  name: DDR2_Arbiter_0
+  num_inputs: 4
+  width: 64
+  clock_domain: fast
+  policy: round_robin
+- id: 84
+  type: Arbiter
+  name: DDR3_Arbiter_0
+  num_inputs: 4
+  width: 64
+  clock_domain: fast
+  policy: round_robin
+graph:
+  edges:
+  - src: 0
+    dst: 1
+    width: 512
+    latency: 1
+  - src: 2
+    dst: 3
+    width: 512
+    latency: 1
+  - src: 4
+    dst: 5
+    width: 512
+    latency: 1
+  - src: 6
+    dst: 7
+    width: 512
+    latency: 1
+  - src: 8
+    dst: 9
+    width: 512
+    latency: 1
+  - src: 10
+    dst: 11
+    width: 512
+    latency: 1
+  - src: 12
+    dst: 13
+    width: 512
+    latency: 1
+  - src: 14
+    dst: 15
+    width: 512
+    latency: 1
+  - src: 16
+    dst: 17
+    width: 32
+    latency: 1
+  - src: 18
+    dst: 19
+    width: 32
+    latency: 1
+  - src: 20
+    dst: 21
+    width: 32
+    latency: 1
+  - src: 22
+    dst: 23
+    width: 32
+    latency: 1
+  - src: 24
+    dst: 25
+    width: 32
+    latency: 1
+  - src: 26
+    dst: 27
+    width: 32
+    latency: 1
+  - src: 28
+    dst: 29
+    width: 32
+    latency: 1
+  - src: 30
+    dst: 31
+    width: 32
+    latency: 1
+  - src: 32
+    dst: 33
+    width: 32
+    latency: 1
+  - src: 34
+    dst: 35
+    width: 32
+    latency: 1
+  - src: 36
+    dst: 37
+    width: 32
+    latency: 1
+  - src: 38
+    dst: 39
+    width: 32
+    latency: 1
+  - src: 40
+    dst: 41
+    width: 32
+    latency: 1
+  - src: 42
+    dst: 43
+    width: 32
+    latency: 1
+  - src: 44
+    dst: 45
+    width: 32
+    latency: 1
+  - src: 46
+    dst: 47
+    width: 32
+    latency: 1
+  - src: 49
+    dst: 48
+    width: 512
+    latency: 4
+  - src: 51
+    dst: 50
+    width: 512
+    latency: 4
+  - src: 53
+    dst: 52
+    width: 512
+    latency: 4
+  - src: 55
+    dst: 54
+    width: 512
+    latency: 4
+  - src: 57
+    dst: 56
+    width: 512
+    latency: 4
+  - src: 59
+    dst: 58
+    width: 512
+    latency: 4
+  - src: 61
+    dst: 60
+    width: 512
+    latency: 4
+  - src: 63
+    dst: 62
+    width: 512
+    latency: 4
+  - src: 65
+    dst: 64
+    width: 128
+    latency: 10
+  - src: 67
+    dst: 66
+    width: 128
+    latency: 10
+  - src: 69
+    dst: 68
+    width: 128
+    latency: 10
+  - src: 71
+    dst: 70
+    width: 128
+    latency: 10
+  - src: 72
+    dst: 65
+    width: 128
+    latency: 2
+  - src: 72
+    dst: 67
+    width: 128
+    latency: 2
+  - src: 72
+    dst: 69
+    width: 128
+    latency: 2
+  - src: 72
+    dst: 71
+    width: 128
+    latency: 2
+  - src: 1
+    dst: 73
+    width: 512
+    latency: 1
+  - src: 73
+    dst: 49
+    width: 512
+    latency: 1
+  - src: 3
+    dst: 74
+    width: 512
+    latency: 1
+  - src: 74
+    dst: 51
+    width: 512
+    latency: 1
+  - src: 5
+    dst: 75
+    width: 512
+    latency: 1
+  - src: 75
+    dst: 53
+    width: 512
+    latency: 1
+  - src: 7
+    dst: 76
+    width: 512
+    latency: 1
+  - src: 76
+    dst: 55
+    width: 512
+    latency: 1
+  - src: 9
+    dst: 77
+    width: 512
+    latency: 1
+  - src: 77
+    dst: 57
+    width: 512
+    latency: 1
+  - src: 11
+    dst: 78
+    width: 512
+    latency: 1
+  - src: 78
+    dst: 59
+    width: 512
+    latency: 1
+  - src: 13
+    dst: 79
+    width: 512
+    latency: 1
+  - src: 79
+    dst: 61
+    width: 512
+    latency: 1
+  - src: 15
+    dst: 80
+    width: 512
+    latency: 1
+  - src: 80
+    dst: 63
+    width: 512
+    latency: 1
+  - src: 17
+    dst: 81
+    width: 64
+    latency: 1
+  - src: 19
+    dst: 81
+    width: 64
+    latency: 1
+  - src: 21
+    dst: 81
+    width: 64
+    latency: 1
+  - src: 23
+    dst: 81
+    width: 64
+    latency: 1
+  - src: 81
+    dst: 72
+    width: 64
+    latency: 2
+  - src: 25
+    dst: 82
+    width: 64
+    latency: 1
+  - src: 27
+    dst: 82
+    width: 64
+    latency: 1
+  - src: 29
+    dst: 82
+    width: 64
+    latency: 1
+  - src: 31
+    dst: 82
+    width: 64
+    latency: 1
+  - src: 82
+    dst: 72
+    width: 64
+    latency: 2
+  - src: 33
+    dst: 83
+    width: 64
+    latency: 1
+  - src: 35
+    dst: 83
+    width: 64
+    latency: 1
+  - src: 37
+    dst: 83
+    width: 64
+    latency: 1
+  - src: 39
+    dst: 83
+    width: 64
+    latency: 1
+  - src: 83
+    dst: 72
+    width: 64
+    latency: 2
+  - src: 41
+    dst: 84
+    width: 64
+    latency: 1
+  - src: 43
+    dst: 84
+    width: 64
+    latency: 1
+  - src: 45
+    dst: 84
+    width: 64
+    latency: 1
+  - src: 47
+    dst: 84
+    width: 64
+    latency: 1
+  - src: 84
+    dst: 72
+    width: 64
+    latency: 2
+constraints:
+  niu_entry_only: false
+  clock_domains:
+  - name: fast
+    frequency: 3000
+  - name: slow
+    frequency: 1500
+  enforce_width_match: false
+  max_end_to_end_latency: 120
+  validate_bandwidth: true
+  validate_latency: true
