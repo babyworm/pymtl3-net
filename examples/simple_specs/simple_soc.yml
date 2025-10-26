@@ -1,0 +1,113 @@
+# Simple Topology Specification
+# User only defines Initiators, Targets, and Traffic requirements
+# The tool automatically generates the internal topology
+
+# Define Initiators (traffic generators)
+initiators:
+  - name: CPU_Core0
+    type: CPU
+    avg_throughput: 2.0    # GB/s
+    max_throughput: 4.0    # GB/s
+    latency_req: 20        # cycles
+    priority: 0
+
+  - name: CPU_Core1
+    type: CPU
+    avg_throughput: 2.0
+    max_throughput: 4.0
+    latency_req: 20
+    priority: 0
+
+  - name: GPU
+    type: GPU
+    avg_throughput: 8.0
+    max_throughput: 16.0
+    latency_req: 50
+    priority: 1
+
+  - name: ISP
+    type: Image_Processor
+    avg_throughput: 4.0
+    max_throughput: 8.0
+    latency_req: 30
+    priority: 1
+
+# Define Targets (memory destinations)
+targets:
+  - name: DDR4_Memory
+    type: DRAM
+    max_bandwidth: 25.6   # GB/s
+    latency: 100          # cycles
+    size: 4               # GB
+
+  - name: L3_Cache
+    type: SRAM
+    max_bandwidth: 50.0
+    latency: 10
+    size: 0.032           # 32 MB
+
+  - name: Flash_Storage
+    type: Flash
+    max_bandwidth: 2.0
+    latency: 500
+    size: 128
+
+# Define Traffic Matrix (which initiators access which targets)
+traffic_flows:
+  - src: CPU_Core0
+    dst: DDR4_Memory
+    bandwidth: 1.0        # GB/s guaranteed
+    max_latency: 120      # cycles
+    priority: 0
+
+  - src: CPU_Core0
+    dst: L3_Cache
+    bandwidth: 0.5
+    max_latency: 30
+    priority: 0
+
+  - src: CPU_Core1
+    dst: DDR4_Memory
+    bandwidth: 1.0
+    max_latency: 120
+    priority: 0
+
+  - src: CPU_Core1
+    dst: L3_Cache
+    bandwidth: 0.5
+    max_latency: 30
+    priority: 0
+
+  - src: GPU
+    dst: DDR4_Memory
+    bandwidth: 8.0
+    max_latency: 150
+    priority: 1
+
+  - src: ISP
+    dst: DDR4_Memory
+    bandwidth: 4.0
+    max_latency: 40
+    priority: 1
+
+  - src: ISP
+    dst: Flash_Storage
+    bandwidth: 0.5
+    max_latency: 600
+    priority: 2
+
+# System constraints
+constraints:
+  clock_domains:
+    - name: fast
+      frequency: 2000     # MHz
+    - name: slow
+      frequency: 1000
+
+  default_data_width: 64  # bits
+  max_arbiter_inputs: 4
+  max_decoder_outputs: 4
+
+  # Optimization goals
+  optimize_for: bandwidth  # Options: bandwidth, latency, area, power
+  allow_shared_links: true
