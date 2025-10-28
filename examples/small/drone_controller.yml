@@ -1,0 +1,316 @@
+network: Irregular
+num_nodes: 26
+nodes:
+- id: 0
+  type: Initiator
+  name: Flight_Controller
+  avg_throughput: 0.5
+  max_throughput: 1.0
+  latency_requirement: 5
+  priority: 0
+  traffic_pattern: uniform
+- id: 1
+  type: Initiator
+  name: IMU_Processor
+  avg_throughput: 0.3
+  max_throughput: 0.6
+  latency_requirement: 8
+  priority: 0
+  traffic_pattern: uniform
+- id: 2
+  type: Initiator
+  name: Camera_4K
+  avg_throughput: 10.0
+  max_throughput: 20.0
+  latency_requirement: 50
+  priority: 1
+  traffic_pattern: streaming
+- id: 3
+  type: Initiator
+  name: Video_Encoder
+  avg_throughput: 6.0
+  max_throughput: 12.0
+  latency_requirement: 60
+  priority: 1
+  traffic_pattern: streaming
+- id: 4
+  type: Initiator
+  name: GPS_Module
+  avg_throughput: 0.05
+  max_throughput: 0.1
+  latency_requirement: 100
+  priority: 2
+  traffic_pattern: bursty
+- id: 5
+  type: Initiator
+  name: Telemetry_Radio
+  avg_throughput: 0.2
+  max_throughput: 0.5
+  latency_requirement: 80
+  priority: 1
+  traffic_pattern: bursty
+- id: 6
+  type: Initiator
+  name: Obstacle_Vision
+  avg_throughput: 2.0
+  max_throughput: 4.0
+  latency_requirement: 30
+  priority: 0
+  traffic_pattern: bursty
+- id: 7
+  type: Initiator
+  name: Gimbal_Controller
+  avg_throughput: 0.1
+  max_throughput: 0.2
+  latency_requirement: 15
+  priority: 0
+  traffic_pattern: uniform
+- id: 8
+  type: NIU
+  name: Flight_NIU
+  width: 32
+  clock_domain: ultra_fast
+- id: 9
+  type: NIU
+  name: IMU_NIU
+  width: 32
+  clock_domain: ultra_fast
+- id: 10
+  type: NIU
+  name: Camera_NIU
+  width: 128
+  clock_domain: fast
+- id: 11
+  type: NIU
+  name: Encoder_NIU
+  width: 128
+  clock_domain: fast
+- id: 12
+  type: NIU
+  name: GPS_NIU
+  width: 16
+  clock_domain: slow
+- id: 13
+  type: NIU
+  name: Radio_NIU
+  width: 16
+  clock_domain: fast
+- id: 14
+  type: NIU
+  name: Vision_NIU
+  width: 64
+  clock_domain: fast
+- id: 15
+  type: NIU
+  name: Gimbal_NIU
+  width: 16
+  clock_domain: ultra_fast
+- id: 16
+  type: NIU
+  name: Memory_NIU
+  width: 128
+  clock_domain: fast
+- id: 17
+  type: Router
+  name: Control_Router
+  width: 32
+  clock_domain: ultra_fast
+  num_ports: 5
+- id: 18
+  type: Router
+  name: Video_Router
+  width: 128
+  clock_domain: fast
+  num_ports: 4
+- id: 19
+  type: Router
+  name: Aux_Router
+  width: 32
+  clock_domain: fast
+  num_ports: 3
+- id: 20
+  type: Arbiter
+  name: Memory_Arbiter
+  num_inputs: 3
+  width: 128
+  clock_domain: fast
+  policy: priority
+- id: 22
+  type: ClockConverter
+  name: GPS_CDC
+  width: 16
+  src_clock_domain: slow
+  dst_clock_domain: fast
+- id: 23
+  type: ClockConverter
+  name: Control_CDC
+  width: 32
+  src_clock_domain: ultra_fast
+  dst_clock_domain: fast
+- id: 24
+  type: Target
+  name: DDR3_Video
+  max_bandwidth: 25.6
+  latency: 100
+  size: 2
+  type_detail: DRAM
+- id: 25
+  type: Target
+  name: Control_SRAM
+  max_bandwidth: 15.0
+  latency: 3
+  size: 0.002
+  type_detail: SRAM
+- id: 26
+  type: Target
+  name: SD_Storage
+  max_bandwidth: 0.3
+  latency: 400
+  size: 128
+  type_detail: SD_Card
+graph:
+  edges:
+  - src: 0
+    dst: 8
+    width: 32
+    latency: 1
+  - src: 1
+    dst: 9
+    width: 32
+    latency: 1
+  - src: 2
+    dst: 10
+    width: 128
+    latency: 1
+  - src: 3
+    dst: 11
+    width: 128
+    latency: 1
+  - src: 4
+    dst: 12
+    width: 16
+    latency: 1
+  - src: 5
+    dst: 13
+    width: 16
+    latency: 1
+  - src: 6
+    dst: 14
+    width: 64
+    latency: 1
+  - src: 7
+    dst: 15
+    width: 16
+    latency: 1
+  - src: 8
+    dst: 17
+    width: 32
+    latency: 1
+  - src: 9
+    dst: 17
+    width: 32
+    latency: 1
+  - src: 15
+    dst: 17
+    width: 16
+    latency: 1
+  - src: 10
+    dst: 18
+    width: 128
+    latency: 1
+  - src: 11
+    dst: 18
+    width: 128
+    latency: 1
+  - src: 14
+    dst: 18
+    width: 64
+    latency: 1
+  - src: 12
+    dst: 22
+    width: 16
+    latency: 1
+  - src: 22
+    dst: 19
+    width: 16
+    latency: 2
+  - src: 13
+    dst: 19
+    width: 16
+    latency: 1
+  - src: 18
+    dst: 20
+    width: 128
+    latency: 1
+  - src: 17
+    dst: 23
+    width: 32
+    latency: 1
+  - src: 23
+    dst: 20
+    width: 32
+    latency: 2
+  - src: 19
+    dst: 20
+    width: 32
+    latency: 1
+  - src: 20
+    dst: 16
+    width: 128
+    latency: 2
+  - src: 17
+    dst: 25
+    width: 32
+    latency: 1
+  - src: 16
+    dst: 24
+    width: 128
+    latency: 5
+  - src: 16
+    dst: 26
+    width: 128
+    latency: 10
+constraints:
+  niu_entry_only: false
+  clock_domains:
+  - name: ultra_fast
+    frequency: 800
+  - name: fast
+    frequency: 400
+  - name: slow
+    frequency: 100
+  enforce_width_match: false
+  max_end_to_end_latency: 450
+  bandwidth_allocation:
+  - initiator: 0
+    target: 25
+    guaranteed_bw: 0.5
+    max_latency: 8
+    priority: 0
+  - initiator: 1
+    target: 25
+    guaranteed_bw: 0.3
+    max_latency: 12
+    priority: 0
+  - initiator: 2
+    target: 24
+    guaranteed_bw: 10.0
+    max_latency: 65
+    priority: 1
+  - initiator: 3
+    target: 24
+    guaranteed_bw: 6.0
+    max_latency: 75
+    priority: 1
+  - initiator: 6
+    target: 24
+    guaranteed_bw: 2.0
+    max_latency: 45
+    priority: 0
+  - initiator: 3
+    target: 26
+    guaranteed_bw: 0.25
+    max_latency: 450
+    priority: 2
+  validate_bandwidth: true
+  validate_latency: true
