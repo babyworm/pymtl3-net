@@ -1,0 +1,574 @@
+network: Irregular
+num_nodes: 57
+nodes:
+- id: 0
+  type: Initiator
+  name: Init_0
+  avg_throughput: 2.0
+  max_throughput: 4.0
+  latency_requirement: 20
+  priority: 0
+  traffic_pattern: bursty
+- id: 1
+  type: Initiator
+  name: Init_1
+  avg_throughput: 3.0
+  max_throughput: 6.0
+  latency_requirement: 21
+  priority: 1
+  traffic_pattern: streaming
+- id: 2
+  type: Initiator
+  name: Init_2
+  avg_throughput: 4.0
+  max_throughput: 8.0
+  latency_requirement: 22
+  priority: 2
+  traffic_pattern: uniform
+- id: 3
+  type: Initiator
+  name: Init_3
+  avg_throughput: 5.0
+  max_throughput: 10.0
+  latency_requirement: 23
+  priority: 0
+  traffic_pattern: bursty
+- id: 4
+  type: Initiator
+  name: Init_4
+  avg_throughput: 6.0
+  max_throughput: 12.0
+  latency_requirement: 24
+  priority: 1
+  traffic_pattern: streaming
+- id: 5
+  type: Initiator
+  name: Init_5
+  avg_throughput: 7.0
+  max_throughput: 14.0
+  latency_requirement: 25
+  priority: 2
+  traffic_pattern: uniform
+- id: 6
+  type: Initiator
+  name: Init_6
+  avg_throughput: 8.0
+  max_throughput: 16.0
+  latency_requirement: 26
+  priority: 0
+  traffic_pattern: bursty
+- id: 7
+  type: Initiator
+  name: Init_7
+  avg_throughput: 9.0
+  max_throughput: 18.0
+  latency_requirement: 27
+  priority: 1
+  traffic_pattern: streaming
+- id: 8
+  type: Initiator
+  name: Init_8
+  avg_throughput: 10.0
+  max_throughput: 20.0
+  latency_requirement: 28
+  priority: 2
+  traffic_pattern: uniform
+- id: 9
+  type: Initiator
+  name: Init_9
+  avg_throughput: 11.0
+  max_throughput: 22.0
+  latency_requirement: 29
+  priority: 0
+  traffic_pattern: bursty
+- id: 10
+  type: Initiator
+  name: Init_10
+  avg_throughput: 2.0
+  max_throughput: 4.0
+  latency_requirement: 30
+  priority: 1
+  traffic_pattern: streaming
+- id: 11
+  type: Initiator
+  name: Init_11
+  avg_throughput: 3.0
+  max_throughput: 6.0
+  latency_requirement: 31
+  priority: 2
+  traffic_pattern: uniform
+- id: 12
+  type: Initiator
+  name: Init_12
+  avg_throughput: 4.0
+  max_throughput: 8.0
+  latency_requirement: 32
+  priority: 0
+  traffic_pattern: bursty
+- id: 13
+  type: Initiator
+  name: Init_13
+  avg_throughput: 5.0
+  max_throughput: 10.0
+  latency_requirement: 33
+  priority: 1
+  traffic_pattern: streaming
+- id: 14
+  type: Initiator
+  name: Init_14
+  avg_throughput: 6.0
+  max_throughput: 12.0
+  latency_requirement: 34
+  priority: 2
+  traffic_pattern: uniform
+- id: 15
+  type: NIU
+  name: Init_0_NIU
+  width: 64
+  clock_domain: fast
+- id: 16
+  type: NIU
+  name: Init_1_NIU
+  width: 128
+  clock_domain: slow
+- id: 17
+  type: NIU
+  name: Init_2_NIU
+  width: 256
+  clock_domain: fast
+- id: 18
+  type: NIU
+  name: Init_3_NIU
+  width: 64
+  clock_domain: slow
+- id: 19
+  type: NIU
+  name: Init_4_NIU
+  width: 128
+  clock_domain: fast
+- id: 20
+  type: NIU
+  name: Init_5_NIU
+  width: 256
+  clock_domain: slow
+- id: 21
+  type: NIU
+  name: Init_6_NIU
+  width: 64
+  clock_domain: fast
+- id: 22
+  type: NIU
+  name: Init_7_NIU
+  width: 128
+  clock_domain: slow
+- id: 23
+  type: NIU
+  name: Init_8_NIU
+  width: 256
+  clock_domain: fast
+- id: 24
+  type: NIU
+  name: Init_9_NIU
+  width: 64
+  clock_domain: slow
+- id: 25
+  type: NIU
+  name: Init_10_NIU
+  width: 128
+  clock_domain: fast
+- id: 26
+  type: NIU
+  name: Init_11_NIU
+  width: 256
+  clock_domain: slow
+- id: 27
+  type: NIU
+  name: Init_12_NIU
+  width: 64
+  clock_domain: fast
+- id: 28
+  type: NIU
+  name: Init_13_NIU
+  width: 128
+  clock_domain: slow
+- id: 29
+  type: NIU
+  name: Init_14_NIU
+  width: 256
+  clock_domain: fast
+- id: 30
+  type: Router
+  name: Router_0
+  width: 128
+  clock_domain: fast
+  num_ports: 4
+- id: 31
+  type: Router
+  name: Router_1
+  width: 128
+  clock_domain: fast
+  num_ports: 4
+- id: 32
+  type: Router
+  name: Router_2
+  width: 128
+  clock_domain: fast
+  num_ports: 4
+- id: 33
+  type: Router
+  name: Router_3
+  width: 128
+  clock_domain: fast
+  num_ports: 4
+- id: 34
+  type: Arbiter
+  name: Arbiter_0
+  num_inputs: 4
+  width: 128
+  clock_domain: fast
+  policy: priority
+- id: 35
+  type: Arbiter
+  name: Arbiter_1
+  num_inputs: 4
+  width: 128
+  clock_domain: fast
+  policy: round_robin
+- id: 36
+  type: Arbiter
+  name: Arbiter_2
+  num_inputs: 4
+  width: 128
+  clock_domain: fast
+  policy: priority
+- id: 37
+  type: NIU
+  name: Tgt_0_NIU
+  width: 128
+  clock_domain: fast
+- id: 38
+  type: NIU
+  name: Tgt_1_NIU
+  width: 128
+  clock_domain: fast
+- id: 39
+  type: NIU
+  name: Tgt_2_NIU
+  width: 128
+  clock_domain: fast
+- id: 40
+  type: NIU
+  name: Tgt_3_NIU
+  width: 128
+  clock_domain: fast
+- id: 41
+  type: NIU
+  name: Tgt_4_NIU
+  width: 128
+  clock_domain: fast
+- id: 42
+  type: NIU
+  name: Tgt_5_NIU
+  width: 128
+  clock_domain: fast
+- id: 43
+  type: NIU
+  name: Tgt_6_NIU
+  width: 128
+  clock_domain: fast
+- id: 44
+  type: NIU
+  name: Tgt_7_NIU
+  width: 128
+  clock_domain: fast
+- id: 45
+  type: NIU
+  name: Tgt_8_NIU
+  width: 128
+  clock_domain: fast
+- id: 46
+  type: NIU
+  name: Tgt_9_NIU
+  width: 128
+  clock_domain: fast
+- id: 47
+  type: Target
+  name: Memory_0
+  max_bandwidth: 25.6
+  latency: 50
+  size: 4
+  type_detail: DRAM
+- id: 48
+  type: Target
+  name: Memory_1
+  max_bandwidth: 35.6
+  latency: 70
+  size: 6
+  type_detail: SRAM
+- id: 49
+  type: Target
+  name: Memory_2
+  max_bandwidth: 45.6
+  latency: 90
+  size: 8
+  type_detail: Flash
+- id: 50
+  type: Target
+  name: Memory_3
+  max_bandwidth: 55.6
+  latency: 110
+  size: 10
+  type_detail: DRAM
+- id: 51
+  type: Target
+  name: Memory_4
+  max_bandwidth: 65.6
+  latency: 130
+  size: 12
+  type_detail: SRAM
+- id: 52
+  type: Target
+  name: Memory_5
+  max_bandwidth: 75.6
+  latency: 150
+  size: 14
+  type_detail: Flash
+- id: 53
+  type: Target
+  name: Memory_6
+  max_bandwidth: 85.6
+  latency: 170
+  size: 16
+  type_detail: DRAM
+- id: 54
+  type: Target
+  name: Memory_7
+  max_bandwidth: 95.6
+  latency: 190
+  size: 18
+  type_detail: SRAM
+- id: 55
+  type: Target
+  name: Memory_8
+  max_bandwidth: 105.6
+  latency: 210
+  size: 20
+  type_detail: Flash
+- id: 56
+  type: Target
+  name: Memory_9
+  max_bandwidth: 115.6
+  latency: 230
+  size: 22
+  type_detail: DRAM
+graph:
+  edges:
+  - src: 0
+    dst: 15
+    width: 128
+    latency: 1
+  - src: 1
+    dst: 16
+    width: 128
+    latency: 1
+  - src: 2
+    dst: 17
+    width: 128
+    latency: 1
+  - src: 3
+    dst: 18
+    width: 128
+    latency: 1
+  - src: 4
+    dst: 19
+    width: 128
+    latency: 1
+  - src: 5
+    dst: 20
+    width: 128
+    latency: 1
+  - src: 6
+    dst: 21
+    width: 128
+    latency: 1
+  - src: 7
+    dst: 22
+    width: 128
+    latency: 1
+  - src: 8
+    dst: 23
+    width: 128
+    latency: 1
+  - src: 9
+    dst: 24
+    width: 128
+    latency: 1
+  - src: 10
+    dst: 25
+    width: 128
+    latency: 1
+  - src: 11
+    dst: 26
+    width: 128
+    latency: 1
+  - src: 12
+    dst: 27
+    width: 128
+    latency: 1
+  - src: 13
+    dst: 28
+    width: 128
+    latency: 1
+  - src: 14
+    dst: 29
+    width: 128
+    latency: 1
+  - src: 15
+    dst: 30
+    width: 128
+    latency: 1
+  - src: 16
+    dst: 31
+    width: 128
+    latency: 1
+  - src: 17
+    dst: 32
+    width: 128
+    latency: 1
+  - src: 18
+    dst: 33
+    width: 128
+    latency: 1
+  - src: 19
+    dst: 30
+    width: 128
+    latency: 1
+  - src: 20
+    dst: 31
+    width: 128
+    latency: 1
+  - src: 21
+    dst: 32
+    width: 128
+    latency: 1
+  - src: 22
+    dst: 33
+    width: 128
+    latency: 1
+  - src: 23
+    dst: 30
+    width: 128
+    latency: 1
+  - src: 24
+    dst: 31
+    width: 128
+    latency: 1
+  - src: 25
+    dst: 32
+    width: 128
+    latency: 1
+  - src: 26
+    dst: 33
+    width: 128
+    latency: 1
+  - src: 27
+    dst: 30
+    width: 128
+    latency: 1
+  - src: 28
+    dst: 31
+    width: 128
+    latency: 1
+  - src: 29
+    dst: 32
+    width: 128
+    latency: 1
+  - src: 30
+    dst: 37
+    width: 128
+    latency: 2
+  - src: 30
+    dst: 38
+    width: 128
+    latency: 2
+  - src: 31
+    dst: 37
+    width: 128
+    latency: 2
+  - src: 31
+    dst: 38
+    width: 128
+    latency: 2
+  - src: 32
+    dst: 37
+    width: 128
+    latency: 2
+  - src: 32
+    dst: 38
+    width: 128
+    latency: 2
+  - src: 33
+    dst: 37
+    width: 128
+    latency: 2
+  - src: 33
+    dst: 38
+    width: 128
+    latency: 2
+  - src: 37
+    dst: 47
+    width: 128
+    latency: 5
+  - src: 38
+    dst: 48
+    width: 128
+    latency: 5
+  - src: 39
+    dst: 49
+    width: 128
+    latency: 5
+  - src: 40
+    dst: 50
+    width: 128
+    latency: 5
+  - src: 41
+    dst: 51
+    width: 128
+    latency: 5
+  - src: 42
+    dst: 52
+    width: 128
+    latency: 5
+  - src: 43
+    dst: 53
+    width: 128
+    latency: 5
+  - src: 44
+    dst: 54
+    width: 128
+    latency: 5
+  - src: 45
+    dst: 55
+    width: 128
+    latency: 5
+  - src: 46
+    dst: 56
+    width: 128
+    latency: 5
+constraints:
+  niu_entry_only: true
+  clock_domains:
+  - name: fast
+    frequency: 2000
+  - name: slow
+    frequency: 1000
+  enforce_width_match: false
+  max_end_to_end_latency: 200
+  bandwidth_allocation:
+  - initiator: 0
+    target: 47
+    guaranteed_bw: 5.0
+    max_latency: 100
+    priority: 0
+  validate_bandwidth: true
+  validate_latency: true

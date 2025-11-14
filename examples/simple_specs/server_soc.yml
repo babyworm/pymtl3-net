@@ -1,0 +1,103 @@
+# Server SoC Specification
+# 16 initiators, 8 targets
+# High-bandwidth server chip with multiple CPU cores, AI accelerators, and I/O
+
+initiators:
+  # 8 CPU Cores
+  - {name: CPU0, type: CPU_Core, avg_throughput: 3.0, max_throughput: 6.0, latency_req: 15, priority: 0}
+  - {name: CPU1, type: CPU_Core, avg_throughput: 3.0, max_throughput: 6.0, latency_req: 15, priority: 0}
+  - {name: CPU2, type: CPU_Core, avg_throughput: 3.0, max_throughput: 6.0, latency_req: 15, priority: 0}
+  - {name: CPU3, type: CPU_Core, avg_throughput: 3.0, max_throughput: 6.0, latency_req: 15, priority: 0}
+  - {name: CPU4, type: CPU_Core, avg_throughput: 3.0, max_throughput: 6.0, latency_req: 15, priority: 0}
+  - {name: CPU5, type: CPU_Core, avg_throughput: 3.0, max_throughput: 6.0, latency_req: 15, priority: 0}
+  - {name: CPU6, type: CPU_Core, avg_throughput: 3.0, max_throughput: 6.0, latency_req: 15, priority: 0}
+  - {name: CPU7, type: CPU_Core, avg_throughput: 3.0, max_throughput: 6.0, latency_req: 15, priority: 0}
+
+  # 2 AI Accelerators
+  - {name: AI_Accel0, type: Tensor_Core, avg_throughput: 20.0, max_throughput: 40.0, latency_req: 60, priority: 1}
+  - {name: AI_Accel1, type: Tensor_Core, avg_throughput: 20.0, max_throughput: 40.0, latency_req: 60, priority: 1}
+
+  # 4 I/O Controllers
+  - {name: PCIe0, type: PCIe_Controller, avg_throughput: 8.0, max_throughput: 16.0, latency_req: 40, priority: 1}
+  - {name: PCIe1, type: PCIe_Controller, avg_throughput: 8.0, max_throughput: 16.0, latency_req: 40, priority: 1}
+  - {name: Ethernet0, type: Network_Controller, avg_throughput: 12.5, max_throughput: 25.0, latency_req: 30, priority: 0}
+  - {name: Ethernet1, type: Network_Controller, avg_throughput: 12.5, max_throughput: 25.0, latency_req: 30, priority: 0}
+
+  # 2 DMA Engines
+  - {name: DMA0, type: DMA_Engine, avg_throughput: 10.0, max_throughput: 20.0, latency_req: 50, priority: 2}
+  - {name: DMA1, type: DMA_Engine, avg_throughput: 10.0, max_throughput: 20.0, latency_req: 50, priority: 2}
+
+targets:
+  # Main memory banks (4x DDR4)
+  - {name: DDR0, type: DDR4, max_bandwidth: 25.6, latency: 100, size: 16}
+  - {name: DDR1, type: DDR4, max_bandwidth: 25.6, latency: 100, size: 16}
+  - {name: DDR2, type: DDR4, max_bandwidth: 25.6, latency: 100, size: 16}
+  - {name: DDR3, type: DDR4, max_bandwidth: 25.6, latency: 100, size: 16}
+
+  # HBM for AI accelerators
+  - {name: HBM0, type: HBM2, max_bandwidth: 256.0, latency: 50, size: 8}
+  - {name: HBM1, type: HBM2, max_bandwidth: 256.0, latency: 50, size: 8}
+
+  # L3 Cache
+  - {name: L3_Cache, type: SRAM, max_bandwidth: 100.0, latency: 10, size: 0.128}
+
+  # NVMe Storage
+  - {name: NVMe0, type: NVMe_SSD, max_bandwidth: 7.0, latency: 200, size: 2048}
+
+traffic_flows:
+  # CPU cores → DDR (distributed)
+  - {src: CPU0, dst: DDR0, bandwidth: 2.0, max_latency: 120, priority: 0}
+  - {src: CPU1, dst: DDR0, bandwidth: 2.0, max_latency: 120, priority: 0}
+  - {src: CPU2, dst: DDR1, bandwidth: 2.0, max_latency: 120, priority: 0}
+  - {src: CPU3, dst: DDR1, bandwidth: 2.0, max_latency: 120, priority: 0}
+  - {src: CPU4, dst: DDR2, bandwidth: 2.0, max_latency: 120, priority: 0}
+  - {src: CPU5, dst: DDR2, bandwidth: 2.0, max_latency: 120, priority: 0}
+  - {src: CPU6, dst: DDR3, bandwidth: 2.0, max_latency: 120, priority: 0}
+  - {src: CPU7, dst: DDR3, bandwidth: 2.0, max_latency: 120, priority: 0}
+
+  # CPU cores → L3 Cache
+  - {src: CPU0, dst: L3_Cache, bandwidth: 1.0, max_latency: 25, priority: 0}
+  - {src: CPU1, dst: L3_Cache, bandwidth: 1.0, max_latency: 25, priority: 0}
+  - {src: CPU2, dst: L3_Cache, bandwidth: 1.0, max_latency: 25, priority: 0}
+  - {src: CPU3, dst: L3_Cache, bandwidth: 1.0, max_latency: 25, priority: 0}
+  - {src: CPU4, dst: L3_Cache, bandwidth: 1.0, max_latency: 25, priority: 0}
+  - {src: CPU5, dst: L3_Cache, bandwidth: 1.0, max_latency: 25, priority: 0}
+  - {src: CPU6, dst: L3_Cache, bandwidth: 1.0, max_latency: 25, priority: 0}
+  - {src: CPU7, dst: L3_Cache, bandwidth: 1.0, max_latency: 25, priority: 0}
+
+  # AI Accelerators → HBM (high bandwidth!)
+  - {src: AI_Accel0, dst: HBM0, bandwidth: 100.0, max_latency: 80, priority: 1}
+  - {src: AI_Accel1, dst: HBM1, bandwidth: 100.0, max_latency: 80, priority: 1}
+
+  # AI Accelerators → DDR (lower priority)
+  - {src: AI_Accel0, dst: DDR0, bandwidth: 10.0, max_latency: 150, priority: 2}
+  - {src: AI_Accel1, dst: DDR1, bandwidth: 10.0, max_latency: 150, priority: 2}
+
+  # PCIe → DDR
+  - {src: PCIe0, dst: DDR2, bandwidth: 8.0, max_latency: 100, priority: 1}
+  - {src: PCIe1, dst: DDR3, bandwidth: 8.0, max_latency: 100, priority: 1}
+
+  # Ethernet → DDR
+  - {src: Ethernet0, dst: DDR0, bandwidth: 12.0, max_latency: 80, priority: 0}
+  - {src: Ethernet1, dst: DDR1, bandwidth: 12.0, max_latency: 80, priority: 0}
+
+  # DMA → All DDR
+  - {src: DMA0, dst: DDR0, bandwidth: 5.0, max_latency: 100, priority: 2}
+  - {src: DMA0, dst: DDR1, bandwidth: 5.0, max_latency: 100, priority: 2}
+  - {src: DMA1, dst: DDR2, bandwidth: 5.0, max_latency: 100, priority: 2}
+  - {src: DMA1, dst: DDR3, bandwidth: 5.0, max_latency: 100, priority: 2}
+
+  # Storage access
+  - {src: CPU0, dst: NVMe0, bandwidth: 0.5, max_latency: 250, priority: 2}
+  - {src: DMA0, dst: NVMe0, bandwidth: 5.0, max_latency: 300, priority: 2}
+
+constraints:
+  clock_domains:
+    - {name: fast, frequency: 3000}
+    - {name: slow, frequency: 1500}
+
+  default_data_width: 128
+  max_arbiter_inputs: 4
+  max_decoder_outputs: 4
+  optimize_for: bandwidth
+  allow_shared_links: true

@@ -1,0 +1,89 @@
+# AI Training Cluster Specification
+# 8 AI accelerators with high-bandwidth HBM access
+# 16 CPU cores with lower-bandwidth DDR access
+# Demonstrates dramatic optimization impact
+
+initiators:
+  # 8 AI Accelerators (very high bandwidth to HBM)
+  - {name: AI0, type: Tensor_Core, avg_throughput: 100.0, max_throughput: 200.0, latency_req: 50, priority: 0}
+  - {name: AI1, type: Tensor_Core, avg_throughput: 100.0, max_throughput: 200.0, latency_req: 50, priority: 0}
+  - {name: AI2, type: Tensor_Core, avg_throughput: 100.0, max_throughput: 200.0, latency_req: 50, priority: 0}
+  - {name: AI3, type: Tensor_Core, avg_throughput: 100.0, max_throughput: 200.0, latency_req: 50, priority: 0}
+  - {name: AI4, type: Tensor_Core, avg_throughput: 100.0, max_throughput: 200.0, latency_req: 50, priority: 0}
+  - {name: AI5, type: Tensor_Core, avg_throughput: 100.0, max_throughput: 200.0, latency_req: 50, priority: 0}
+  - {name: AI6, type: Tensor_Core, avg_throughput: 100.0, max_throughput: 200.0, latency_req: 50, priority: 0}
+  - {name: AI7, type: Tensor_Core, avg_throughput: 100.0, max_throughput: 200.0, latency_req: 50, priority: 0}
+
+  # 16 CPU Cores (lower bandwidth to DDR)
+  - {name: CPU0, type: CPU_Core, avg_throughput: 2.0, max_throughput: 4.0, latency_req: 15, priority: 1}
+  - {name: CPU1, type: CPU_Core, avg_throughput: 2.0, max_throughput: 4.0, latency_req: 15, priority: 1}
+  - {name: CPU2, type: CPU_Core, avg_throughput: 2.0, max_throughput: 4.0, latency_req: 15, priority: 1}
+  - {name: CPU3, type: CPU_Core, avg_throughput: 2.0, max_throughput: 4.0, latency_req: 15, priority: 1}
+  - {name: CPU4, type: CPU_Core, avg_throughput: 2.0, max_throughput: 4.0, latency_req: 15, priority: 1}
+  - {name: CPU5, type: CPU_Core, avg_throughput: 2.0, max_throughput: 4.0, latency_req: 15, priority: 1}
+  - {name: CPU6, type: CPU_Core, avg_throughput: 2.0, max_throughput: 4.0, latency_req: 15, priority: 1}
+  - {name: CPU7, type: CPU_Core, avg_throughput: 2.0, max_throughput: 4.0, latency_req: 15, priority: 1}
+  - {name: CPU8, type: CPU_Core, avg_throughput: 2.0, max_throughput: 4.0, latency_req: 15, priority: 1}
+  - {name: CPU9, type: CPU_Core, avg_throughput: 2.0, max_throughput: 4.0, latency_req: 15, priority: 1}
+  - {name: CPU10, type: CPU_Core, avg_throughput: 2.0, max_throughput: 4.0, latency_req: 15, priority: 1}
+  - {name: CPU11, type: CPU_Core, avg_throughput: 2.0, max_throughput: 4.0, latency_req: 15, priority: 1}
+  - {name: CPU12, type: CPU_Core, avg_throughput: 2.0, max_throughput: 4.0, latency_req: 15, priority: 1}
+  - {name: CPU13, type: CPU_Core, avg_throughput: 2.0, max_throughput: 4.0, latency_req: 15, priority: 1}
+  - {name: CPU14, type: CPU_Core, avg_throughput: 2.0, max_throughput: 4.0, latency_req: 15, priority: 1}
+  - {name: CPU15, type: CPU_Core, avg_throughput: 2.0, max_throughput: 4.0, latency_req: 15, priority: 1}
+
+targets:
+  # 8 HBM stacks for AI accelerators (1:1 mapping for max bandwidth)
+  - {name: HBM0, type: HBM2, max_bandwidth: 307.2, latency: 40, size: 4}
+  - {name: HBM1, type: HBM2, max_bandwidth: 307.2, latency: 40, size: 4}
+  - {name: HBM2, type: HBM2, max_bandwidth: 307.2, latency: 40, size: 4}
+  - {name: HBM3, type: HBM2, max_bandwidth: 307.2, latency: 40, size: 4}
+  - {name: HBM4, type: HBM2, max_bandwidth: 307.2, latency: 40, size: 4}
+  - {name: HBM5, type: HBM2, max_bandwidth: 307.2, latency: 40, size: 4}
+  - {name: HBM6, type: HBM2, max_bandwidth: 307.2, latency: 40, size: 4}
+  - {name: HBM7, type: HBM2, max_bandwidth: 307.2, latency: 40, size: 4}
+
+  # 4 DDR channels for CPUs
+  - {name: DDR0, type: DDR4, max_bandwidth: 25.6, latency: 100, size: 32}
+  - {name: DDR1, type: DDR4, max_bandwidth: 25.6, latency: 100, size: 32}
+  - {name: DDR2, type: DDR4, max_bandwidth: 25.6, latency: 100, size: 32}
+  - {name: DDR3, type: DDR4, max_bandwidth: 25.6, latency: 100, size: 32}
+
+traffic_flows:
+  # AI → HBM (very high bandwidth, 1:1 dedicated paths)
+  - {src: AI0, dst: HBM0, bandwidth: 150.0, max_latency: 60, priority: 0}
+  - {src: AI1, dst: HBM1, bandwidth: 150.0, max_latency: 60, priority: 0}
+  - {src: AI2, dst: HBM2, bandwidth: 150.0, max_latency: 60, priority: 0}
+  - {src: AI3, dst: HBM3, bandwidth: 150.0, max_latency: 60, priority: 0}
+  - {src: AI4, dst: HBM4, bandwidth: 150.0, max_latency: 60, priority: 0}
+  - {src: AI5, dst: HBM5, bandwidth: 150.0, max_latency: 60, priority: 0}
+  - {src: AI6, dst: HBM6, bandwidth: 150.0, max_latency: 60, priority: 0}
+  - {src: AI7, dst: HBM7, bandwidth: 150.0, max_latency: 60, priority: 0}
+
+  # CPUs → DDR (low bandwidth, can share via arbiters)
+  - {src: CPU0, dst: DDR0, bandwidth: 2.0, max_latency: 120, priority: 1}
+  - {src: CPU1, dst: DDR0, bandwidth: 2.0, max_latency: 120, priority: 1}
+  - {src: CPU2, dst: DDR0, bandwidth: 2.0, max_latency: 120, priority: 1}
+  - {src: CPU3, dst: DDR0, bandwidth: 2.0, max_latency: 120, priority: 1}
+  - {src: CPU4, dst: DDR1, bandwidth: 2.0, max_latency: 120, priority: 1}
+  - {src: CPU5, dst: DDR1, bandwidth: 2.0, max_latency: 120, priority: 1}
+  - {src: CPU6, dst: DDR1, bandwidth: 2.0, max_latency: 120, priority: 1}
+  - {src: CPU7, dst: DDR1, bandwidth: 2.0, max_latency: 120, priority: 1}
+  - {src: CPU8, dst: DDR2, bandwidth: 2.0, max_latency: 120, priority: 1}
+  - {src: CPU9, dst: DDR2, bandwidth: 2.0, max_latency: 120, priority: 1}
+  - {src: CPU10, dst: DDR2, bandwidth: 2.0, max_latency: 120, priority: 1}
+  - {src: CPU11, dst: DDR2, bandwidth: 2.0, max_latency: 120, priority: 1}
+  - {src: CPU12, dst: DDR3, bandwidth: 2.0, max_latency: 120, priority: 1}
+  - {src: CPU13, dst: DDR3, bandwidth: 2.0, max_latency: 120, priority: 1}
+  - {src: CPU14, dst: DDR3, bandwidth: 2.0, max_latency: 120, priority: 1}
+  - {src: CPU15, dst: DDR3, bandwidth: 2.0, max_latency: 120, priority: 1}
+
+constraints:
+  clock_domains:
+    - {name: fast, frequency: 3000}
+    - {name: slow, frequency: 1500}
+
+  default_data_width: 512
+  max_arbiter_inputs: 4
+  optimize_for: bandwidth
+  allow_shared_links: true

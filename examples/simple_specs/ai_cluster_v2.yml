@@ -1,0 +1,84 @@
+# AI Cluster with Explicit Connectivity Constraints
+# Demonstrates proper constraint-based optimization
+
+initiators:
+  # 4 AI Accelerators
+  - {name: AI0, type: Tensor_Core, avg_throughput: 100.0, max_throughput: 200.0, latency_req: 50, priority: 0}
+  - {name: AI1, type: Tensor_Core, avg_throughput: 100.0, max_throughput: 200.0, latency_req: 50, priority: 0}
+  - {name: AI2, type: Tensor_Core, avg_throughput: 100.0, max_throughput: 200.0, latency_req: 50, priority: 0}
+  - {name: AI3, type: Tensor_Core, avg_throughput: 100.0, max_throughput: 200.0, latency_req: 50, priority: 0}
+
+  # 8 CPU Cores
+  - {name: CPU0, type: CPU_Core, avg_throughput: 2.0, max_throughput: 4.0, latency_req: 15, priority: 1}
+  - {name: CPU1, type: CPU_Core, avg_throughput: 2.0, max_throughput: 4.0, latency_req: 15, priority: 1}
+  - {name: CPU2, type: CPU_Core, avg_throughput: 2.0, max_throughput: 4.0, latency_req: 15, priority: 1}
+  - {name: CPU3, type: CPU_Core, avg_throughput: 2.0, max_throughput: 4.0, latency_req: 15, priority: 1}
+  - {name: CPU4, type: CPU_Core, avg_throughput: 2.0, max_throughput: 4.0, latency_req: 15, priority: 1}
+  - {name: CPU5, type: CPU_Core, avg_throughput: 2.0, max_throughput: 4.0, latency_req: 15, priority: 1}
+  - {name: CPU6, type: CPU_Core, avg_throughput: 2.0, max_throughput: 4.0, latency_req: 15, priority: 1}
+  - {name: CPU7, type: CPU_Core, avg_throughput: 2.0, max_throughput: 4.0, latency_req: 15, priority: 1}
+
+targets:
+  # 4 HBM stacks
+  - {name: HBM0, type: HBM2, max_bandwidth: 307.2, latency: 40, size: 4}
+  - {name: HBM1, type: HBM2, max_bandwidth: 307.2, latency: 40, size: 4}
+  - {name: HBM2, type: HBM2, max_bandwidth: 307.2, latency: 40, size: 4}
+  - {name: HBM3, type: HBM2, max_bandwidth: 307.2, latency: 40, size: 4}
+
+  # 2 DDR channels
+  - {name: DDR0, type: DDR4, max_bandwidth: 25.6, latency: 100, size: 32}
+  - {name: DDR1, type: DDR4, max_bandwidth: 25.6, latency: 100, size: 32}
+
+# CONNECTIVITY CONSTRAINTS (MUST preserve all these)
+traffic_flows:
+  # AI accelerators: High-BW to HBM (primary) + Low-BW to DDR (fallback)
+  # Each AI can access BOTH its HBM and DDR - connectivity requirement!
+  - {src: AI0, dst: HBM0, bandwidth: 150.0, max_latency: 60, priority: 0}
+  - {src: AI0, dst: DDR0, bandwidth: 5.0, max_latency: 150, priority: 2}  # MUST keep this!
+
+  - {src: AI1, dst: HBM1, bandwidth: 150.0, max_latency: 60, priority: 0}
+  - {src: AI1, dst: DDR0, bandwidth: 5.0, max_latency: 150, priority: 2}
+
+  - {src: AI2, dst: HBM2, bandwidth: 150.0, max_latency: 60, priority: 0}
+  - {src: AI2, dst: DDR1, bandwidth: 5.0, max_latency: 150, priority: 2}
+
+  - {src: AI3, dst: HBM3, bandwidth: 150.0, max_latency: 60, priority: 0}
+  - {src: AI3, dst: DDR1, bandwidth: 5.0, max_latency: 150, priority: 2}
+
+  # CPUs: Access to DDR (can access any DDR for load balancing)
+  - {src: CPU0, dst: DDR0, bandwidth: 2.0, max_latency: 120, priority: 1}
+  - {src: CPU0, dst: DDR1, bandwidth: 1.0, max_latency: 120, priority: 1}  # Can access both!
+
+  - {src: CPU1, dst: DDR0, bandwidth: 2.0, max_latency: 120, priority: 1}
+  - {src: CPU2, dst: DDR0, bandwidth: 2.0, max_latency: 120, priority: 1}
+  - {src: CPU3, dst: DDR0, bandwidth: 2.0, max_latency: 120, priority: 1}
+  - {src: CPU4, dst: DDR1, bandwidth: 2.0, max_latency: 120, priority: 1}
+  - {src: CPU5, dst: DDR1, bandwidth: 2.0, max_latency: 120, priority: 1}
+  - {src: CPU6, dst: DDR1, bandwidth: 2.0, max_latency: 120, priority: 1}
+  - {src: CPU7, dst: DDR1, bandwidth: 2.0, max_latency: 120, priority: 1}
+
+# OPTIMIZATION SETTINGS
+optimization:
+  # Multi-objective weights (sum = 1.0 recommended)
+  weights:
+    throughput: 0.6   # Highest priority
+    latency: 0.3      # Second priority
+    area: 0.1         # Lowest priority (can sacrifice area for performance)
+
+  # Constraints
+  max_crossbar_ports: 32      # Hard limit on crossbar size
+  max_arbiter_inputs: 4       # Max arbiter fan-in
+  max_router_hops: 3          # Max hops from initiator to target
+
+  # Strategy preferences
+  prefer_dedicated_for_bw: 50.0   # GB/s threshold for dedicated paths
+  allow_arbiter_sharing: true     # Allow low-BW flows to share via arbiters
+  minimize_crossbar: true         # Try to reduce crossbar load
+
+constraints:
+  clock_domains:
+    - {name: fast, frequency: 3000}
+    - {name: slow, frequency: 1500}
+
+  default_data_width: 512
+  max_arbiter_inputs: 4

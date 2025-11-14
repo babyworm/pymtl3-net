@@ -1,0 +1,284 @@
+network: Irregular
+num_nodes: 23
+nodes:
+- id: 0
+  type: Initiator
+  name: Cortex_M_Core
+  avg_throughput: 0.3
+  max_throughput: 0.6
+  latency_requirement: 25
+  priority: 0
+  traffic_pattern: bursty
+- id: 1
+  type: Initiator
+  name: PPG_Sensor
+  avg_throughput: 0.1
+  max_throughput: 0.2
+  latency_requirement: 40
+  priority: 1
+  traffic_pattern: uniform
+- id: 2
+  type: Initiator
+  name: ECG_Sensor
+  avg_throughput: 0.15
+  max_throughput: 0.3
+  latency_requirement: 35
+  priority: 0
+  traffic_pattern: uniform
+- id: 3
+  type: Initiator
+  name: IMU_Sensor
+  avg_throughput: 0.05
+  max_throughput: 0.1
+  latency_requirement: 50
+  priority: 2
+  traffic_pattern: uniform
+- id: 4
+  type: Initiator
+  name: Display_Controller
+  avg_throughput: 0.8
+  max_throughput: 1.6
+  latency_requirement: 30
+  priority: 0
+  traffic_pattern: streaming
+- id: 5
+  type: Initiator
+  name: BLE_Radio
+  avg_throughput: 0.25
+  max_throughput: 0.5
+  latency_requirement: 60
+  priority: 1
+  traffic_pattern: bursty
+- id: 6
+  type: Initiator
+  name: GPS_Module
+  avg_throughput: 0.02
+  max_throughput: 0.05
+  latency_requirement: 100
+  priority: 2
+  traffic_pattern: bursty
+- id: 7
+  type: Initiator
+  name: Audio_Codec
+  avg_throughput: 0.4
+  max_throughput: 0.8
+  latency_requirement: 45
+  priority: 1
+  traffic_pattern: streaming
+- id: 8
+  type: NIU
+  name: CPU_NIU
+  width: 32
+  clock_domain: slow
+- id: 9
+  type: NIU
+  name: PPG_NIU
+  width: 16
+  clock_domain: ultra_slow
+- id: 10
+  type: NIU
+  name: ECG_NIU
+  width: 16
+  clock_domain: ultra_slow
+- id: 11
+  type: NIU
+  name: IMU_NIU
+  width: 16
+  clock_domain: ultra_slow
+- id: 12
+  type: NIU
+  name: Display_NIU
+  width: 32
+  clock_domain: slow
+- id: 13
+  type: NIU
+  name: BLE_NIU
+  width: 16
+  clock_domain: slow
+- id: 14
+  type: NIU
+  name: GPS_NIU
+  width: 16
+  clock_domain: slow
+- id: 15
+  type: NIU
+  name: Audio_NIU
+  width: 16
+  clock_domain: slow
+- id: 16
+  type: Router
+  name: Main_Router
+  width: 32
+  clock_domain: slow
+  num_ports: 7
+- id: 17
+  type: Router
+  name: Sensor_Router
+  width: 16
+  clock_domain: ultra_slow
+  num_ports: 4
+- id: 18
+  type: Decoder
+  name: Memory_Decoder
+  num_outputs: 3
+  width: 32
+  clock_domain: slow
+- id: 20
+  type: ClockConverter
+  name: Sensor_Router_Main_Router_CDC
+  width: 16
+  src_clock_domain: ultra_slow
+  dst_clock_domain: slow
+- id: 19
+  type: Target
+  name: PSRAM
+  max_bandwidth: 2.0
+  latency: 40
+  size: 0.008
+  type_detail: PSRAM
+- id: 20
+  type: Target
+  name: Flash_Storage
+  max_bandwidth: 0.1
+  latency: 250
+  size: 0.512
+  type_detail: Flash
+- id: 21
+  type: Target
+  name: RTC_Memory
+  max_bandwidth: 0.01
+  latency: 10
+  size: 6.4e-05
+  type_detail: SRAM
+graph:
+  edges:
+  - src: 0
+    dst: 8
+    width: 32
+    latency: 1
+  - src: 1
+    dst: 9
+    width: 16
+    latency: 1
+  - src: 2
+    dst: 10
+    width: 16
+    latency: 1
+  - src: 3
+    dst: 11
+    width: 16
+    latency: 1
+  - src: 4
+    dst: 12
+    width: 32
+    latency: 1
+  - src: 5
+    dst: 13
+    width: 16
+    latency: 1
+  - src: 6
+    dst: 14
+    width: 16
+    latency: 1
+  - src: 7
+    dst: 15
+    width: 16
+    latency: 1
+  - src: 9
+    dst: 17
+    width: 16
+    latency: 1
+  - src: 10
+    dst: 17
+    width: 16
+    latency: 1
+  - src: 11
+    dst: 17
+    width: 16
+    latency: 1
+  - src: 17
+    dst: 20
+    width: 16
+    latency: 1
+  - src: 20
+    dst: 16
+    width: 16
+    latency: 2
+  - src: 8
+    dst: 16
+    width: 32
+    latency: 1
+  - src: 12
+    dst: 16
+    width: 32
+    latency: 1
+  - src: 13
+    dst: 16
+    width: 16
+    latency: 1
+  - src: 14
+    dst: 16
+    width: 16
+    latency: 1
+  - src: 15
+    dst: 16
+    width: 16
+    latency: 1
+  - src: 16
+    dst: 18
+    width: 32
+    latency: 1
+  - src: 18
+    dst: 19
+    width: 32
+    latency: 2
+  - src: 18
+    dst: 20
+    width: 32
+    latency: 5
+  - src: 18
+    dst: 21
+    width: 32
+    latency: 1
+constraints:
+  niu_entry_only: false
+  clock_domains:
+  - name: slow
+    frequency: 100
+  - name: ultra_slow
+    frequency: 32
+  enforce_width_match: false
+  max_end_to_end_latency: 300
+  bandwidth_allocation:
+  - initiator: 4
+    target: 19
+    guaranteed_bw: 0.8
+    max_latency: 50
+    priority: 0
+  - initiator: 2
+    target: 19
+    guaranteed_bw: 0.15
+    max_latency: 60
+    priority: 0
+  - initiator: 1
+    target: 19
+    guaranteed_bw: 0.1
+    max_latency: 65
+    priority: 1
+  - initiator: 7
+    target: 19
+    guaranteed_bw: 0.4
+    max_latency: 70
+    priority: 1
+  - initiator: 0
+    target: 20
+    guaranteed_bw: 0.05
+    max_latency: 280
+    priority: 2
+  - initiator: 3
+    target: 21
+    guaranteed_bw: 0.005
+    max_latency: 120
+    priority: 2
+  validate_bandwidth: true
+  validate_latency: true

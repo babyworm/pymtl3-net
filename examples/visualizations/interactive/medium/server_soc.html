@@ -1,0 +1,2388 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Soc - Interactive Topology</title>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: #f5f5f5;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+        }
+
+        .header .back-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background 0.3s;
+        }
+
+        .header .back-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .container {
+            display: flex;
+            height: calc(100vh - 60px);
+        }
+
+        .sidebar {
+            width: 350px;
+            background: white;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-section {
+            padding: 1.5rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .sidebar-section h2 {
+            font-size: 1.2rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+        }
+
+        .stat-item {
+            background: #f5f7fa;
+            padding: 0.75rem;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .stat-item .value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-item .label {
+            font-size: 0.75rem;
+            color: #666;
+            margin-top: 0.25rem;
+        }
+
+        .legend {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .control-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.75rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.3s;
+        }
+
+        .control-btn:hover {
+            background: #5568d3;
+        }
+
+        .control-btn.secondary {
+            background: #95a5a6;
+        }
+
+        .control-btn.secondary:hover {
+            background: #7f8c8d;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .details-panel {
+            background: #f9f9f9;
+            padding: 1.5rem;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .details-panel h3 {
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .details-panel pre {
+            background: white;
+            padding: 1rem;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+
+        .qos-flow {
+            background: white;
+            padding: 0.75rem;
+            border-radius: 5px;
+            margin-bottom: 0.5rem;
+            border-left: 3px solid #667eea;
+        }
+
+        .qos-flow .flow-name {
+            font-weight: bold;
+            margin-bottom: 0.25rem;
+        }
+
+        .qos-flow .flow-details {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        #network {
+            flex: 1;
+            background: white;
+        }
+
+        .filter-group {
+            margin-top: 0.5rem;
+        }
+
+        .filter-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 0.25rem 0;
+        }
+
+        .info-message {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔬 Server Soc</h1>
+        <a href="../report.html" class="back-btn">← Back to Overview</a>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <div class="sidebar-section">
+                <h2>📊 Statistics</h2>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="value">64</div>
+                        <div class="label">Nodes</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="value">67</div>
+                        <div class="label">Edges</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="value">16</div>
+                        <div class="label">Initiators</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="value">8</div>
+                        <div class="label">Targets</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="value">24</div>
+                        <div class="label">NIUs</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="value">6</div>
+                        <div class="label">Routers</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h2>🎨 Node Types</h2>
+                <div class="legend">
+
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #A8E6CF;"></div>
+                        <span>Arbiter (4)</span>
+                    </div>
+
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #FFEAA7;"></div>
+                        <span>ClockConverter (2)</span>
+                    </div>
+
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #F38181;"></div>
+                        <span>Decoder (2)</span>
+                    </div>
+
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #FF6B6B;"></div>
+                        <span>Initiator (16)</span>
+                    </div>
+
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #FFD93D;"></div>
+                        <span>NIU (24)</span>
+                    </div>
+
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #95E1D3;"></div>
+                        <span>Router (6)</span>
+                    </div>
+
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #4ECDC4;"></div>
+                        <span>Target (8)</span>
+                    </div>
+
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #C7CEEA;"></div>
+                        <span>WidthConverter (2)</span>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h2>🔍 Search & Filter</h2>
+                <input type="text" id="searchBox" class="search-box" placeholder="Search nodes...">
+                <div class="controls">
+                    <button class="control-btn" onclick="fitNetwork()">📐 Fit to Screen</button>
+                    <button class="control-btn secondary" onclick="resetView()">🔄 Reset View</button>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h2>⚡ QoS Flows</h2>
+
+                <div class="qos-flow">
+                    <div class="flow-name">GPU_Compute → HBM3</div>
+                    <div class="flow-details">BW: 20.0 GB/s | Latency: 70 cycles | Priority: 1</div>
+                </div>
+
+                <div class="qos-flow">
+                    <div class="flow-name">AI_Accelerator0 → HBM3</div>
+                    <div class="flow-details">BW: 15.0 GB/s | Latency: 65 cycles | Priority: 1</div>
+                </div>
+
+                <div class="qos-flow">
+                    <div class="flow-name">AI_Accelerator1 → HBM3</div>
+                    <div class="flow-details">BW: 15.0 GB/s | Latency: 65 cycles | Priority: 1</div>
+                </div>
+
+                <div class="qos-flow">
+                    <div class="flow-name">CPU_Core0 → L3_Cache</div>
+                    <div class="flow-details">BW: 4.0 GB/s | Latency: 50 cycles | Priority: 0</div>
+                </div>
+
+                <div class="qos-flow">
+                    <div class="flow-name">CPU_Core1 → System_Cache</div>
+                    <div class="flow-details">BW: 4.0 GB/s | Latency: 55 cycles | Priority: 0</div>
+                </div>
+
+                <div class="qos-flow">
+                    <div class="flow-name">PCIe_Gen5_Controller0 → DDR5_Channel0</div>
+                    <div class="flow-details">BW: 12.0 GB/s | Latency: 100 cycles | Priority: 1</div>
+                </div>
+
+                <div class="qos-flow">
+                    <div class="flow-name">PCIe_Gen5_Controller1 → DDR5_Channel1</div>
+                    <div class="flow-details">BW: 12.0 GB/s | Latency: 100 cycles | Priority: 1</div>
+                </div>
+
+                <div class="qos-flow">
+                    <div class="flow-name">100G_Ethernet0 → DDR5_Channel0</div>
+                    <div class="flow-details">BW: 10.0 GB/s | Latency: 70 cycles | Priority: 1</div>
+                </div>
+
+                <div class="qos-flow">
+                    <div class="flow-name">NVMe_Controller0 → NVRAM</div>
+                    <div class="flow-details">BW: 6.0 GB/s | Latency: 180 cycles | Priority: 2</div>
+                </div>
+
+                <div class="qos-flow">
+                    <div class="flow-name">NVMe_Controller1 → NVRAM</div>
+                    <div class="flow-details">BW: 6.0 GB/s | Latency: 180 cycles | Priority: 2</div>
+                </div>
+
+            </div>
+
+            <div class="sidebar-section details-panel" id="detailsPanel">
+                <div class="info-message">
+                    💡 Click on a node or edge to see detailed information
+                </div>
+            </div>
+        </div>
+
+        <div id="network"></div>
+    </div>
+
+    <script type="text/javascript">
+        // Data
+        const nodesData = [
+        {
+                "id": 0,
+                "label": "CPU_Core0",
+                "title": "<b>CPU_Core0</b><br>Type: Initiator<br>avg_throughput: 4.0<br>max_throughput: 8.0<br>latency_requirement: 30<br>priority: 0<br>traffic_pattern: bursty",
+                "group": "Initiator",
+                "color": "#FF6B6B",
+                "data": {
+                        "id": 0,
+                        "type": "Initiator",
+                        "name": "CPU_Core0",
+                        "avg_throughput": 4.0,
+                        "max_throughput": 8.0,
+                        "latency_requirement": 30,
+                        "priority": 0,
+                        "traffic_pattern": "bursty"
+                }
+        },
+        {
+                "id": 1,
+                "label": "CPU_Core1",
+                "title": "<b>CPU_Core1</b><br>Type: Initiator<br>avg_throughput: 4.0<br>max_throughput: 8.0<br>latency_requirement: 30<br>priority: 0<br>traffic_pattern: bursty",
+                "group": "Initiator",
+                "color": "#FF6B6B",
+                "data": {
+                        "id": 1,
+                        "type": "Initiator",
+                        "name": "CPU_Core1",
+                        "avg_throughput": 4.0,
+                        "max_throughput": 8.0,
+                        "latency_requirement": 30,
+                        "priority": 0,
+                        "traffic_pattern": "bursty"
+                }
+        },
+        {
+                "id": 2,
+                "label": "CPU_Core2",
+                "title": "<b>CPU_Core2</b><br>Type: Initiator<br>avg_throughput: 4.0<br>max_throughput: 8.0<br>latency_requirement: 30<br>priority: 0<br>traffic_pattern: bursty",
+                "group": "Initiator",
+                "color": "#FF6B6B",
+                "data": {
+                        "id": 2,
+                        "type": "Initiator",
+                        "name": "CPU_Core2",
+                        "avg_throughput": 4.0,
+                        "max_throughput": 8.0,
+                        "latency_requirement": 30,
+                        "priority": 0,
+                        "traffic_pattern": "bursty"
+                }
+        },
+        {
+                "id": 3,
+                "label": "CPU_Core3",
+                "title": "<b>CPU_Core3</b><br>Type: Initiator<br>avg_throughput: 4.0<br>max_throughput: 8.0<br>latency_requirement: 30<br>priority: 0<br>traffic_pattern: bursty",
+                "group": "Initiator",
+                "color": "#FF6B6B",
+                "data": {
+                        "id": 3,
+                        "type": "Initiator",
+                        "name": "CPU_Core3",
+                        "avg_throughput": 4.0,
+                        "max_throughput": 8.0,
+                        "latency_requirement": 30,
+                        "priority": 0,
+                        "traffic_pattern": "bursty"
+                }
+        },
+        {
+                "id": 4,
+                "label": "GPU_Compute",
+                "title": "<b>GPU_Compute</b><br>Type: Initiator<br>avg_throughput: 20.0<br>max_throughput: 40.0<br>latency_requirement: 50<br>priority: 1<br>traffic_pattern: streaming",
+                "group": "Initiator",
+                "color": "#FF6B6B",
+                "data": {
+                        "id": 4,
+                        "type": "Initiator",
+                        "name": "GPU_Compute",
+                        "avg_throughput": 20.0,
+                        "max_throughput": 40.0,
+                        "latency_requirement": 50,
+                        "priority": 1,
+                        "traffic_pattern": "streaming"
+                }
+        },
+        {
+                "id": 5,
+                "label": "AI_Accelerator0",
+                "title": "<b>AI_Accelerator0</b><br>Type: Initiator<br>avg_throughput: 15.0<br>max_throughput: 30.0<br>latency_requirement: 45<br>priority: 1<br>traffic_pattern: bursty",
+                "group": "Initiator",
+                "color": "#FF6B6B",
+                "data": {
+                        "id": 5,
+                        "type": "Initiator",
+                        "name": "AI_Accelerator0",
+                        "avg_throughput": 15.0,
+                        "max_throughput": 30.0,
+                        "latency_requirement": 45,
+                        "priority": 1,
+                        "traffic_pattern": "bursty"
+                }
+        },
+        {
+                "id": 6,
+                "label": "AI_Accelerator1",
+                "title": "<b>AI_Accelerator1</b><br>Type: Initiator<br>avg_throughput: 15.0<br>max_throughput: 30.0<br>latency_requirement: 45<br>priority: 1<br>traffic_pattern: bursty",
+                "group": "Initiator",
+                "color": "#FF6B6B",
+                "data": {
+                        "id": 6,
+                        "type": "Initiator",
+                        "name": "AI_Accelerator1",
+                        "avg_throughput": 15.0,
+                        "max_throughput": 30.0,
+                        "latency_requirement": 45,
+                        "priority": 1,
+                        "traffic_pattern": "bursty"
+                }
+        },
+        {
+                "id": 7,
+                "label": "PCIe_Gen5_Controller0",
+                "title": "<b>PCIe_Gen5_Controller0</b><br>Type: Initiator<br>avg_throughput: 12.0<br>max_throughput: 24.0<br>latency_requirement: 60<br>priority: 1<br>traffic_pattern: bursty",
+                "group": "Initiator",
+                "color": "#FF6B6B",
+                "data": {
+                        "id": 7,
+                        "type": "Initiator",
+                        "name": "PCIe_Gen5_Controller0",
+                        "avg_throughput": 12.0,
+                        "max_throughput": 24.0,
+                        "latency_requirement": 60,
+                        "priority": 1,
+                        "traffic_pattern": "bursty"
+                }
+        },
+        {
+                "id": 8,
+                "label": "PCIe_Gen5_Controller1",
+                "title": "<b>PCIe_Gen5_Controller1</b><br>Type: Initiator<br>avg_throughput: 12.0<br>max_throughput: 24.0<br>latency_requirement: 60<br>priority: 1<br>traffic_pattern: bursty",
+                "group": "Initiator",
+                "color": "#FF6B6B",
+                "data": {
+                        "id": 8,
+                        "type": "Initiator",
+                        "name": "PCIe_Gen5_Controller1",
+                        "avg_throughput": 12.0,
+                        "max_throughput": 24.0,
+                        "latency_requirement": 60,
+                        "priority": 1,
+                        "traffic_pattern": "bursty"
+                }
+        },
+        {
+                "id": 9,
+                "label": "DMA_Engine0",
+                "title": "<b>DMA_Engine0</b><br>Type: Initiator<br>avg_throughput: 8.0<br>max_throughput: 16.0<br>latency_requirement: 40<br>priority: 2<br>traffic_pattern: streaming",
+                "group": "Initiator",
+                "color": "#FF6B6B",
+                "data": {
+                        "id": 9,
+                        "type": "Initiator",
+                        "name": "DMA_Engine0",
+                        "avg_throughput": 8.0,
+                        "max_throughput": 16.0,
+                        "latency_requirement": 40,
+                        "priority": 2,
+                        "traffic_pattern": "streaming"
+                }
+        },
+        {
+                "id": 10,
+                "label": "DMA_Engine1",
+                "title": "<b>DMA_Engine1</b><br>Type: Initiator<br>avg_throughput: 8.0<br>max_throughput: 16.0<br>latency_requirement: 40<br>priority: 2<br>traffic_pattern: streaming",
+                "group": "Initiator",
+                "color": "#FF6B6B",
+                "data": {
+                        "id": 10,
+                        "type": "Initiator",
+                        "name": "DMA_Engine1",
+                        "avg_throughput": 8.0,
+                        "max_throughput": 16.0,
+                        "latency_requirement": 40,
+                        "priority": 2,
+                        "traffic_pattern": "streaming"
+                }
+        },
+        {
+                "id": 11,
+                "label": "100G_Ethernet0",
+                "title": "<b>100G_Ethernet0</b><br>Type: Initiator<br>avg_throughput: 10.0<br>max_throughput: 20.0<br>latency_requirement: 35<br>priority: 1<br>traffic_pattern: bursty",
+                "group": "Initiator",
+                "color": "#FF6B6B",
+                "data": {
+                        "id": 11,
+                        "type": "Initiator",
+                        "name": "100G_Ethernet0",
+                        "avg_throughput": 10.0,
+                        "max_throughput": 20.0,
+                        "latency_requirement": 35,
+                        "priority": 1,
+                        "traffic_pattern": "bursty"
+                }
+        },
+        {
+                "id": 12,
+                "label": "100G_Ethernet1",
+                "title": "<b>100G_Ethernet1</b><br>Type: Initiator<br>avg_throughput: 10.0<br>max_throughput: 20.0<br>latency_requirement: 35<br>priority: 1<br>traffic_pattern: bursty",
+                "group": "Initiator",
+                "color": "#FF6B6B",
+                "data": {
+                        "id": 12,
+                        "type": "Initiator",
+                        "name": "100G_Ethernet1",
+                        "avg_throughput": 10.0,
+                        "max_throughput": 20.0,
+                        "latency_requirement": 35,
+                        "priority": 1,
+                        "traffic_pattern": "bursty"
+                }
+        },
+        {
+                "id": 13,
+                "label": "NVMe_Controller0",
+                "title": "<b>NVMe_Controller0</b><br>Type: Initiator<br>avg_throughput: 6.0<br>max_throughput: 12.0<br>latency_requirement: 80<br>priority: 2<br>traffic_pattern: bursty",
+                "group": "Initiator",
+                "color": "#FF6B6B",
+                "data": {
+                        "id": 13,
+                        "type": "Initiator",
+                        "name": "NVMe_Controller0",
+                        "avg_throughput": 6.0,
+                        "max_throughput": 12.0,
+                        "latency_requirement": 80,
+                        "priority": 2,
+                        "traffic_pattern": "bursty"
+                }
+        },
+        {
+                "id": 14,
+                "label": "NVMe_Controller1",
+                "title": "<b>NVMe_Controller1</b><br>Type: Initiator<br>avg_throughput: 6.0<br>max_throughput: 12.0<br>latency_requirement: 80<br>priority: 2<br>traffic_pattern: bursty",
+                "group": "Initiator",
+                "color": "#FF6B6B",
+                "data": {
+                        "id": 14,
+                        "type": "Initiator",
+                        "name": "NVMe_Controller1",
+                        "avg_throughput": 6.0,
+                        "max_throughput": 12.0,
+                        "latency_requirement": 80,
+                        "priority": 2,
+                        "traffic_pattern": "bursty"
+                }
+        },
+        {
+                "id": 15,
+                "label": "Security_Engine",
+                "title": "<b>Security_Engine</b><br>Type: Initiator<br>avg_throughput: 3.0<br>max_throughput: 6.0<br>latency_requirement: 100<br>priority: 2<br>traffic_pattern: bursty",
+                "group": "Initiator",
+                "color": "#FF6B6B",
+                "data": {
+                        "id": 15,
+                        "type": "Initiator",
+                        "name": "Security_Engine",
+                        "avg_throughput": 3.0,
+                        "max_throughput": 6.0,
+                        "latency_requirement": 100,
+                        "priority": 2,
+                        "traffic_pattern": "bursty"
+                }
+        },
+        {
+                "id": 16,
+                "label": "CPU0_NIU",
+                "title": "<b>CPU0_NIU</b><br>Type: NIU<br>width: 64<br>clock_domain: cpu_clk",
+                "group": "NIU",
+                "color": "#FFD93D",
+                "data": {
+                        "id": 16,
+                        "type": "NIU",
+                        "name": "CPU0_NIU",
+                        "width": 64,
+                        "clock_domain": "cpu_clk"
+                }
+        },
+        {
+                "id": 17,
+                "label": "CPU1_NIU",
+                "title": "<b>CPU1_NIU</b><br>Type: NIU<br>width: 64<br>clock_domain: cpu_clk",
+                "group": "NIU",
+                "color": "#FFD93D",
+                "data": {
+                        "id": 17,
+                        "type": "NIU",
+                        "name": "CPU1_NIU",
+                        "width": 64,
+                        "clock_domain": "cpu_clk"
+                }
+        },
+        {
+                "id": 18,
+                "label": "CPU2_NIU",
+                "title": "<b>CPU2_NIU</b><br>Type: NIU<br>width: 64<br>clock_domain: cpu_clk",
+                "group": "NIU",
+                "color": "#FFD93D",
+                "data": {
+                        "id": 18,
+                        "type": "NIU",
+                        "name": "CPU2_NIU",
+                        "width": 64,
+                        "clock_domain": "cpu_clk"
+                }
+        },
+        {
+                "id": 19,
+                "label": "CPU3_NIU",
+                "title": "<b>CPU3_NIU</b><br>Type: NIU<br>width: 64<br>clock_domain: cpu_clk",
+                "group": "NIU",
+                "color": "#FFD93D",
+                "data": {
+                        "id": 19,
+                        "type": "NIU",
+                        "name": "CPU3_NIU",
+                        "width": 64,
+                        "clock_domain": "cpu_clk"
+                }
+        },
+        {
+                "id": 20,
+                "label": "GPU_NIU",
+                "title": "<b>GPU_NIU</b><br>Type: NIU<br>width: 256<br>clock_domain: gpu_clk",
+                "group": "NIU",
+                "color": "#FFD93D",
+                "data": {
+                        "id": 20,
+                        "type": "NIU",
+                        "name": "GPU_NIU",
+                        "width": 256,
+                        "clock_domain": "gpu_clk"
+                }
+        },
+        {
+                "id": 21,
+                "label": "AI0_NIU",
+                "title": "<b>AI0_NIU</b><br>Type: NIU<br>width: 128<br>clock_domain: ai_clk",
+                "group": "NIU",
+                "color": "#FFD93D",
+                "data": {
+                        "id": 21,
+                        "type": "NIU",
+                        "name": "AI0_NIU",
+                        "width": 128,
+                        "clock_domain": "ai_clk"
+                }
+        },
+        {
+                "id": 22,
+                "label": "AI1_NIU",
+                "title": "<b>AI1_NIU</b><br>Type: NIU<br>width: 128<br>clock_domain: ai_clk",
+                "group": "NIU",
+                "color": "#FFD93D",
+                "data": {
+                        "id": 22,
+                        "type": "NIU",
+                        "name": "AI1_NIU",
+                        "width": 128,
+                        "clock_domain": "ai_clk"
+                }
+        },
+        {
+                "id": 23,
+                "label": "PCIe0_NIU",
+                "title": "<b>PCIe0_NIU</b><br>Type: NIU<br>width: 128<br>clock_domain: pcie_clk",
+                "group": "NIU",
+                "color": "#FFD93D",
+                "data": {
+                        "id": 23,
+                        "type": "NIU",
+                        "name": "PCIe0_NIU",
+                        "width": 128,
+                        "clock_domain": "pcie_clk"
+                }
+        },
+        {
+                "id": 24,
+                "label": "PCIe1_NIU",
+                "title": "<b>PCIe1_NIU</b><br>Type: NIU<br>width: 128<br>clock_domain: pcie_clk",
+                "group": "NIU",
+                "color": "#FFD93D",
+                "data": {
+                        "id": 24,
+                        "type": "NIU",
+                        "name": "PCIe1_NIU",
+                        "width": 128,
+                        "clock_domain": "pcie_clk"
+                }
+        },
+        {
+                "id": 25,
+                "label": "DMA0_NIU",
+                "title": "<b>DMA0_NIU</b><br>Type: NIU<br>width: 128<br>clock_domain: dma_clk",
+                "group": "NIU",
+                "color": "#FFD93D",
+                "data": {
+                        "id": 25,
+                        "type": "NIU",
+                        "name": "DMA0_NIU",
+                        "width": 128,
+                        "clock_domain": "dma_clk"
+                }
+        },
+        {
+                "id": 26,
+                "label": "DMA1_NIU",
+                "title": "<b>DMA1_NIU</b><br>Type: NIU<br>width: 128<br>clock_domain: dma_clk",
+                "group": "NIU",
+                "color": "#FFD93D",
+                "data": {
+                        "id": 26,
+                        "type": "NIU",
+                        "name": "DMA1_NIU",
+                        "width": 128,
+                        "clock_domain": "dma_clk"
+                }
+        },
+        {
+                "id": 27,
+                "label": "ETH0_NIU",
+                "title": "<b>ETH0_NIU</b><br>Type: NIU<br>width: 128<br>clock_domain: eth_clk",
+                "group": "NIU",
+                "color": "#FFD93D",
+                "data": {
+                        "id": 27,
+                        "type": "NIU",
+                        "name": "ETH0_NIU",
+                        "width": 128,
+                        "clock_domain": "eth_clk"
+                }
+        },
+        {
+                "id": 28,
+                "label": "ETH1_NIU",
+                "title": "<b>ETH1_NIU</b><br>Type: NIU<br>width: 128<br>clock_domain: eth_clk",
+                "group": "NIU",
+                "color": "#FFD93D",
+                "data": {
+                        "id": 28,
+                        "type": "NIU",
+                        "name": "ETH1_NIU",
+                        "width": 128,
+                        "clock_domain": "eth_clk"
+                }
+        },
+        {
+                "id": 29,
+                "label": "NVMe0_NIU",
+                "title": "<b>NVMe0_NIU</b><br>Type: NIU<br>width: 64<br>clock_domain: nvme_clk",
+                "group": "NIU",
+                "color": "#FFD93D",
+                "data": {
+                        "id": 29,
+                        "type": "NIU",
+                        "name": "NVMe0_NIU",
+                        "width": 64,
+                        "clock_domain": "nvme_clk"
+                }
+        },
+        {
+                "id": 30,
+                "label": "NVMe1_NIU",
+                "title": "<b>NVMe1_NIU</b><br>Type: NIU<br>width: 64<br>clock_domain: nvme_clk",
+                "group": "NIU",
+                "color": "#FFD93D",
+                "data": {
+                        "id": 30,
+                        "type": "NIU",
+                        "name": "NVMe1_NIU",
+                        "width": 64,
+                        "clock_domain": "nvme_clk"
+                }
+        },
+        {
+                "id": 31,
+                "label": "Security_NIU",
+                "title": "<b>Security_NIU</b><br>Type: NIU<br>width: 64<br>clock_domain: cpu_clk",
+                "group": "NIU",
+                "color": "#FFD93D",
+                "data": {
+                        "id": 31,
+                        "type": "NIU",
+                        "name": "Security_NIU",
+                        "width": 64,
+                        "clock_domain": "cpu_clk"
+                }
+        },
+        {
+                "id": 32,
+                "label": "DDR0_NIU",
+                "title": "<b>DDR0_NIU</b><br>Type: NIU<br>width: 256<br>clock_domain: ddr_clk",
+                "group": "NIU",
+                "color": "#FFD93D",
+                "data": {
+                        "id": 32,
+                        "type": "NIU",
+                        "name": "DDR0_NIU",
+                        "width": 256,
+                        "clock_domain": "ddr_clk"
+                }
+        },
+        {
+                "id": 33,
+                "label": "DDR1_NIU",
+                "title": "<b>DDR1_NIU</b><br>Type: NIU<br>width: 256<br>clock_domain: ddr_clk",
+                "group": "NIU",
+                "color": "#FFD93D",
+                "data": {
+                        "id": 33,
+                        "type": "NIU",
+                        "name": "DDR1_NIU",
+                        "width": 256,
+                        "clock_domain": "ddr_clk"
+                }
+        },
+        {
+                "id": 34,
+                "label": "HBM_NIU",
+                "title": "<b>HBM_NIU</b><br>Type: NIU<br>width: 512<br>clock_domain: hbm_clk",
+                "group": "NIU",
+                "color": "#FFD93D",
+                "data": {
+                        "id": 34,
+                        "type": "NIU",
+                        "name": "HBM_NIU",
+                        "width": 512,
+                        "clock_domain": "hbm_clk"
+                }
+        },
+        {
+                "id": 35,
+                "label": "L3_Cache_NIU",
+                "title": "<b>L3_Cache_NIU</b><br>Type: NIU<br>width: 128<br>clock_domain: cpu_clk",
+                "group": "NIU",
+                "color": "#FFD93D",
+                "data": {
+                        "id": 35,
+                        "type": "NIU",
+                        "name": "L3_Cache_NIU",
+                        "width": 128,
+                        "clock_domain": "cpu_clk"
+                }
+        },
+        {
+                "id": 36,
+                "label": "SLC_NIU",
+                "title": "<b>SLC_NIU</b><br>Type: NIU<br>width: 256<br>clock_domain: noc_clk",
+                "group": "NIU",
+                "color": "#FFD93D",
+                "data": {
+                        "id": 36,
+                        "type": "NIU",
+                        "name": "SLC_NIU",
+                        "width": 256,
+                        "clock_domain": "noc_clk"
+                }
+        },
+        {
+                "id": 37,
+                "label": "NVRAM_NIU",
+                "title": "<b>NVRAM_NIU</b><br>Type: NIU<br>width: 64<br>clock_domain: nvme_clk",
+                "group": "NIU",
+                "color": "#FFD93D",
+                "data": {
+                        "id": 37,
+                        "type": "NIU",
+                        "name": "NVRAM_NIU",
+                        "width": 64,
+                        "clock_domain": "nvme_clk"
+                }
+        },
+        {
+                "id": 38,
+                "label": "ROM_NIU",
+                "title": "<b>ROM_NIU</b><br>Type: NIU<br>width: 32<br>clock_domain: cpu_clk",
+                "group": "NIU",
+                "color": "#FFD93D",
+                "data": {
+                        "id": 38,
+                        "type": "NIU",
+                        "name": "ROM_NIU",
+                        "width": 32,
+                        "clock_domain": "cpu_clk"
+                }
+        },
+        {
+                "id": 39,
+                "label": "Flash_NIU",
+                "title": "<b>Flash_NIU</b><br>Type: NIU<br>width: 32<br>clock_domain: cpu_clk",
+                "group": "NIU",
+                "color": "#FFD93D",
+                "data": {
+                        "id": 39,
+                        "type": "NIU",
+                        "name": "Flash_NIU",
+                        "width": 32,
+                        "clock_domain": "cpu_clk"
+                }
+        },
+        {
+                "id": 40,
+                "label": "CPU_Router",
+                "title": "<b>CPU_Router</b><br>Type: Router<br>width: 64<br>clock_domain: cpu_clk<br>num_ports: 5",
+                "group": "Router",
+                "color": "#95E1D3",
+                "data": {
+                        "id": 40,
+                        "type": "Router",
+                        "name": "CPU_Router",
+                        "width": 64,
+                        "clock_domain": "cpu_clk",
+                        "num_ports": 5
+                }
+        },
+        {
+                "id": 41,
+                "label": "GPU_Router",
+                "title": "<b>GPU_Router</b><br>Type: Router<br>width: 256<br>clock_domain: noc_clk<br>num_ports: 4",
+                "group": "Router",
+                "color": "#95E1D3",
+                "data": {
+                        "id": 41,
+                        "type": "Router",
+                        "name": "GPU_Router",
+                        "width": 256,
+                        "clock_domain": "noc_clk",
+                        "num_ports": 4
+                }
+        },
+        {
+                "id": 42,
+                "label": "AI_Router",
+                "title": "<b>AI_Router</b><br>Type: Router<br>width: 128<br>clock_domain: ai_clk<br>num_ports: 4",
+                "group": "Router",
+                "color": "#95E1D3",
+                "data": {
+                        "id": 42,
+                        "type": "Router",
+                        "name": "AI_Router",
+                        "width": 128,
+                        "clock_domain": "ai_clk",
+                        "num_ports": 4
+                }
+        },
+        {
+                "id": 43,
+                "label": "IO_Router",
+                "title": "<b>IO_Router</b><br>Type: Router<br>width: 128<br>clock_domain: pcie_clk<br>num_ports: 5",
+                "group": "Router",
+                "color": "#95E1D3",
+                "data": {
+                        "id": 43,
+                        "type": "Router",
+                        "name": "IO_Router",
+                        "width": 128,
+                        "clock_domain": "pcie_clk",
+                        "num_ports": 5
+                }
+        },
+        {
+                "id": 44,
+                "label": "Memory_Router0",
+                "title": "<b>Memory_Router0</b><br>Type: Router<br>width: 256<br>clock_domain: noc_clk<br>num_ports: 4",
+                "group": "Router",
+                "color": "#95E1D3",
+                "data": {
+                        "id": 44,
+                        "type": "Router",
+                        "name": "Memory_Router0",
+                        "width": 256,
+                        "clock_domain": "noc_clk",
+                        "num_ports": 4
+                }
+        },
+        {
+                "id": 45,
+                "label": "Memory_Router1",
+                "title": "<b>Memory_Router1</b><br>Type: Router<br>width: 256<br>clock_domain: noc_clk<br>num_ports: 4",
+                "group": "Router",
+                "color": "#95E1D3",
+                "data": {
+                        "id": 45,
+                        "type": "Router",
+                        "name": "Memory_Router1",
+                        "width": 256,
+                        "clock_domain": "noc_clk",
+                        "num_ports": 4
+                }
+        },
+        {
+                "id": 46,
+                "label": "CPU_Cluster_Arbiter",
+                "title": "<b>CPU_Cluster_Arbiter</b><br>Type: Arbiter<br>num_inputs: 4<br>width: 64<br>clock_domain: cpu_clk<br>policy: round_robin",
+                "group": "Arbiter",
+                "color": "#A8E6CF",
+                "data": {
+                        "id": 46,
+                        "type": "Arbiter",
+                        "name": "CPU_Cluster_Arbiter",
+                        "num_inputs": 4,
+                        "width": 64,
+                        "clock_domain": "cpu_clk",
+                        "policy": "round_robin"
+                }
+        },
+        {
+                "id": 47,
+                "label": "AI_Arbiter",
+                "title": "<b>AI_Arbiter</b><br>Type: Arbiter<br>num_inputs: 2<br>width: 128<br>clock_domain: ai_clk<br>policy: round_robin",
+                "group": "Arbiter",
+                "color": "#A8E6CF",
+                "data": {
+                        "id": 47,
+                        "type": "Arbiter",
+                        "name": "AI_Arbiter",
+                        "num_inputs": 2,
+                        "width": 128,
+                        "clock_domain": "ai_clk",
+                        "policy": "round_robin"
+                }
+        },
+        {
+                "id": 48,
+                "label": "DDR_Arbiter",
+                "title": "<b>DDR_Arbiter</b><br>Type: Arbiter<br>num_inputs: 4<br>width: 256<br>clock_domain: noc_clk<br>policy: priority",
+                "group": "Arbiter",
+                "color": "#A8E6CF",
+                "data": {
+                        "id": 48,
+                        "type": "Arbiter",
+                        "name": "DDR_Arbiter",
+                        "num_inputs": 4,
+                        "width": 256,
+                        "clock_domain": "noc_clk",
+                        "policy": "priority"
+                }
+        },
+        {
+                "id": 49,
+                "label": "IO_Arbiter",
+                "title": "<b>IO_Arbiter</b><br>Type: Arbiter<br>num_inputs: 4<br>width: 128<br>clock_domain: pcie_clk<br>policy: round_robin",
+                "group": "Arbiter",
+                "color": "#A8E6CF",
+                "data": {
+                        "id": 49,
+                        "type": "Arbiter",
+                        "name": "IO_Arbiter",
+                        "num_inputs": 4,
+                        "width": 128,
+                        "clock_domain": "pcie_clk",
+                        "policy": "round_robin"
+                }
+        },
+        {
+                "id": 50,
+                "label": "Memory_Decoder",
+                "title": "<b>Memory_Decoder</b><br>Type: Decoder<br>num_outputs: 4<br>width: 256<br>clock_domain: noc_clk",
+                "group": "Decoder",
+                "color": "#F38181",
+                "data": {
+                        "id": 50,
+                        "type": "Decoder",
+                        "name": "Memory_Decoder",
+                        "num_outputs": 4,
+                        "width": 256,
+                        "clock_domain": "noc_clk"
+                }
+        },
+        {
+                "id": 51,
+                "label": "Storage_Decoder",
+                "title": "<b>Storage_Decoder</b><br>Type: Decoder<br>num_outputs: 3<br>width: 64<br>clock_domain: cpu_clk",
+                "group": "Decoder",
+                "color": "#F38181",
+                "data": {
+                        "id": 51,
+                        "type": "Decoder",
+                        "name": "Storage_Decoder",
+                        "num_outputs": 3,
+                        "width": 64,
+                        "clock_domain": "cpu_clk"
+                }
+        },
+        {
+                "id": 52,
+                "label": "GPU_WidthConv",
+                "title": "<b>GPU_WidthConv</b><br>Type: WidthConverter<br>src_width: 256<br>dst_width: 512<br>clock_domain: noc_clk",
+                "group": "WidthConverter",
+                "color": "#C7CEEA",
+                "data": {
+                        "id": 52,
+                        "type": "WidthConverter",
+                        "name": "GPU_WidthConv",
+                        "src_width": 256,
+                        "dst_width": 512,
+                        "clock_domain": "noc_clk"
+                }
+        },
+        {
+                "id": 53,
+                "label": "Storage_WidthConv",
+                "title": "<b>Storage_WidthConv</b><br>Type: WidthConverter<br>src_width: 64<br>dst_width: 128<br>clock_domain: cpu_clk",
+                "group": "WidthConverter",
+                "color": "#C7CEEA",
+                "data": {
+                        "id": 53,
+                        "type": "WidthConverter",
+                        "name": "Storage_WidthConv",
+                        "src_width": 64,
+                        "dst_width": 128,
+                        "clock_domain": "cpu_clk"
+                }
+        },
+        {
+                "id": 54,
+                "label": "CPU_NOC_CDC",
+                "title": "<b>CPU_NOC_CDC</b><br>Type: ClockConverter<br>src_domain: cpu_clk<br>dst_domain: noc_clk<br>width: 64",
+                "group": "ClockConverter",
+                "color": "#FFEAA7",
+                "data": {
+                        "id": 54,
+                        "type": "ClockConverter",
+                        "name": "CPU_NOC_CDC",
+                        "src_domain": "cpu_clk",
+                        "dst_domain": "noc_clk",
+                        "width": 64
+                }
+        },
+        {
+                "id": 55,
+                "label": "IO_NOC_CDC",
+                "title": "<b>IO_NOC_CDC</b><br>Type: ClockConverter<br>src_domain: pcie_clk<br>dst_domain: noc_clk<br>width: 128",
+                "group": "ClockConverter",
+                "color": "#FFEAA7",
+                "data": {
+                        "id": 55,
+                        "type": "ClockConverter",
+                        "name": "IO_NOC_CDC",
+                        "src_domain": "pcie_clk",
+                        "dst_domain": "noc_clk",
+                        "width": 128
+                }
+        },
+        {
+                "id": 56,
+                "label": "DDR5_Channel0",
+                "title": "<b>DDR5_Channel0</b><br>Type: Target<br>max_bandwidth: 51.2<br>latency: 80<br>size: 32<br>type_detail: DDR5",
+                "group": "Target",
+                "color": "#4ECDC4",
+                "data": {
+                        "id": 56,
+                        "type": "Target",
+                        "name": "DDR5_Channel0",
+                        "max_bandwidth": 51.2,
+                        "latency": 80,
+                        "size": 32,
+                        "type_detail": "DDR5"
+                }
+        },
+        {
+                "id": 57,
+                "label": "DDR5_Channel1",
+                "title": "<b>DDR5_Channel1</b><br>Type: Target<br>max_bandwidth: 51.2<br>latency: 80<br>size: 32<br>type_detail: DDR5",
+                "group": "Target",
+                "color": "#4ECDC4",
+                "data": {
+                        "id": 57,
+                        "type": "Target",
+                        "name": "DDR5_Channel1",
+                        "max_bandwidth": 51.2,
+                        "latency": 80,
+                        "size": 32,
+                        "type_detail": "DDR5"
+                }
+        },
+        {
+                "id": 58,
+                "label": "HBM3",
+                "title": "<b>HBM3</b><br>Type: Target<br>max_bandwidth: 819.2<br>latency: 40<br>size: 16<br>type_detail: HBM3",
+                "group": "Target",
+                "color": "#4ECDC4",
+                "data": {
+                        "id": 58,
+                        "type": "Target",
+                        "name": "HBM3",
+                        "max_bandwidth": 819.2,
+                        "latency": 40,
+                        "size": 16,
+                        "type_detail": "HBM3"
+                }
+        },
+        {
+                "id": 59,
+                "label": "L3_Cache",
+                "title": "<b>L3_Cache</b><br>Type: Target<br>max_bandwidth: 200.0<br>latency: 15<br>size: 0.128<br>type_detail: SRAM",
+                "group": "Target",
+                "color": "#4ECDC4",
+                "data": {
+                        "id": 59,
+                        "type": "Target",
+                        "name": "L3_Cache",
+                        "max_bandwidth": 200.0,
+                        "latency": 15,
+                        "size": 0.128,
+                        "type_detail": "SRAM"
+                }
+        },
+        {
+                "id": 60,
+                "label": "System_Cache",
+                "title": "<b>System_Cache</b><br>Type: Target<br>max_bandwidth: 400.0<br>latency: 20<br>size: 0.256<br>type_detail: SRAM",
+                "group": "Target",
+                "color": "#4ECDC4",
+                "data": {
+                        "id": 60,
+                        "type": "Target",
+                        "name": "System_Cache",
+                        "max_bandwidth": 400.0,
+                        "latency": 20,
+                        "size": 0.256,
+                        "type_detail": "SRAM"
+                }
+        },
+        {
+                "id": 61,
+                "label": "NVRAM",
+                "title": "<b>NVRAM</b><br>Type: Target<br>max_bandwidth: 12.0<br>latency: 120<br>size: 128<br>type_detail: NVRAM",
+                "group": "Target",
+                "color": "#4ECDC4",
+                "data": {
+                        "id": 61,
+                        "type": "Target",
+                        "name": "NVRAM",
+                        "max_bandwidth": 12.0,
+                        "latency": 120,
+                        "size": 128,
+                        "type_detail": "NVRAM"
+                }
+        },
+        {
+                "id": 62,
+                "label": "Boot_ROM",
+                "title": "<b>Boot_ROM</b><br>Type: Target<br>max_bandwidth: 2.0<br>latency: 50<br>size: 0.016<br>type_detail: ROM",
+                "group": "Target",
+                "color": "#4ECDC4",
+                "data": {
+                        "id": 62,
+                        "type": "Target",
+                        "name": "Boot_ROM",
+                        "max_bandwidth": 2.0,
+                        "latency": 50,
+                        "size": 0.016,
+                        "type_detail": "ROM"
+                }
+        },
+        {
+                "id": 63,
+                "label": "Config_Flash",
+                "title": "<b>Config_Flash</b><br>Type: Target<br>max_bandwidth: 0.5<br>latency: 300<br>size: 0.256<br>type_detail: Flash",
+                "group": "Target",
+                "color": "#4ECDC4",
+                "data": {
+                        "id": 63,
+                        "type": "Target",
+                        "name": "Config_Flash",
+                        "max_bandwidth": 0.5,
+                        "latency": 300,
+                        "size": 0.256,
+                        "type_detail": "Flash"
+                }
+        }
+];
+        const edgesData = [
+        {
+                "from": 0,
+                "to": 16,
+                "title": "<b>0 \u2192 16</b><br>width: 64<br>latency: 1",
+                "width": 2.0,
+                "arrows": "to",
+                "data": {
+                        "src": 0,
+                        "dst": 16,
+                        "width": 64,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 1,
+                "to": 17,
+                "title": "<b>1 \u2192 17</b><br>width: 64<br>latency: 1",
+                "width": 2.0,
+                "arrows": "to",
+                "data": {
+                        "src": 1,
+                        "dst": 17,
+                        "width": 64,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 2,
+                "to": 18,
+                "title": "<b>2 \u2192 18</b><br>width: 64<br>latency: 1",
+                "width": 2.0,
+                "arrows": "to",
+                "data": {
+                        "src": 2,
+                        "dst": 18,
+                        "width": 64,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 3,
+                "to": 19,
+                "title": "<b>3 \u2192 19</b><br>width: 64<br>latency: 1",
+                "width": 2.0,
+                "arrows": "to",
+                "data": {
+                        "src": 3,
+                        "dst": 19,
+                        "width": 64,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 4,
+                "to": 20,
+                "title": "<b>4 \u2192 20</b><br>width: 256<br>latency: 1",
+                "width": 8.0,
+                "arrows": "to",
+                "data": {
+                        "src": 4,
+                        "dst": 20,
+                        "width": 256,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 5,
+                "to": 21,
+                "title": "<b>5 \u2192 21</b><br>width: 128<br>latency: 1",
+                "width": 4.0,
+                "arrows": "to",
+                "data": {
+                        "src": 5,
+                        "dst": 21,
+                        "width": 128,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 6,
+                "to": 22,
+                "title": "<b>6 \u2192 22</b><br>width: 128<br>latency: 1",
+                "width": 4.0,
+                "arrows": "to",
+                "data": {
+                        "src": 6,
+                        "dst": 22,
+                        "width": 128,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 7,
+                "to": 23,
+                "title": "<b>7 \u2192 23</b><br>width: 128<br>latency: 1",
+                "width": 4.0,
+                "arrows": "to",
+                "data": {
+                        "src": 7,
+                        "dst": 23,
+                        "width": 128,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 8,
+                "to": 24,
+                "title": "<b>8 \u2192 24</b><br>width: 128<br>latency: 1",
+                "width": 4.0,
+                "arrows": "to",
+                "data": {
+                        "src": 8,
+                        "dst": 24,
+                        "width": 128,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 9,
+                "to": 25,
+                "title": "<b>9 \u2192 25</b><br>width: 128<br>latency: 1",
+                "width": 4.0,
+                "arrows": "to",
+                "data": {
+                        "src": 9,
+                        "dst": 25,
+                        "width": 128,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 10,
+                "to": 26,
+                "title": "<b>10 \u2192 26</b><br>width: 128<br>latency: 1",
+                "width": 4.0,
+                "arrows": "to",
+                "data": {
+                        "src": 10,
+                        "dst": 26,
+                        "width": 128,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 11,
+                "to": 27,
+                "title": "<b>11 \u2192 27</b><br>width: 128<br>latency: 1",
+                "width": 4.0,
+                "arrows": "to",
+                "data": {
+                        "src": 11,
+                        "dst": 27,
+                        "width": 128,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 12,
+                "to": 28,
+                "title": "<b>12 \u2192 28</b><br>width: 128<br>latency: 1",
+                "width": 4.0,
+                "arrows": "to",
+                "data": {
+                        "src": 12,
+                        "dst": 28,
+                        "width": 128,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 13,
+                "to": 29,
+                "title": "<b>13 \u2192 29</b><br>width: 64<br>latency: 1",
+                "width": 2.0,
+                "arrows": "to",
+                "data": {
+                        "src": 13,
+                        "dst": 29,
+                        "width": 64,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 14,
+                "to": 30,
+                "title": "<b>14 \u2192 30</b><br>width: 64<br>latency: 1",
+                "width": 2.0,
+                "arrows": "to",
+                "data": {
+                        "src": 14,
+                        "dst": 30,
+                        "width": 64,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 15,
+                "to": 31,
+                "title": "<b>15 \u2192 31</b><br>width: 64<br>latency: 1",
+                "width": 2.0,
+                "arrows": "to",
+                "data": {
+                        "src": 15,
+                        "dst": 31,
+                        "width": 64,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 16,
+                "to": 46,
+                "title": "<b>16 \u2192 46</b><br>width: 64<br>latency: 1",
+                "width": 2.0,
+                "arrows": "to",
+                "data": {
+                        "src": 16,
+                        "dst": 46,
+                        "width": 64,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 17,
+                "to": 46,
+                "title": "<b>17 \u2192 46</b><br>width: 64<br>latency: 1",
+                "width": 2.0,
+                "arrows": "to",
+                "data": {
+                        "src": 17,
+                        "dst": 46,
+                        "width": 64,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 18,
+                "to": 46,
+                "title": "<b>18 \u2192 46</b><br>width: 64<br>latency: 1",
+                "width": 2.0,
+                "arrows": "to",
+                "data": {
+                        "src": 18,
+                        "dst": 46,
+                        "width": 64,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 19,
+                "to": 46,
+                "title": "<b>19 \u2192 46</b><br>width: 64<br>latency: 1",
+                "width": 2.0,
+                "arrows": "to",
+                "data": {
+                        "src": 19,
+                        "dst": 46,
+                        "width": 64,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 46,
+                "to": 40,
+                "title": "<b>46 \u2192 40</b><br>width: 64<br>latency: 2",
+                "width": 2.0,
+                "arrows": "to",
+                "data": {
+                        "src": 46,
+                        "dst": 40,
+                        "width": 64,
+                        "latency": 2
+                }
+        },
+        {
+                "from": 31,
+                "to": 40,
+                "title": "<b>31 \u2192 40</b><br>width: 64<br>latency: 1",
+                "width": 2.0,
+                "arrows": "to",
+                "data": {
+                        "src": 31,
+                        "dst": 40,
+                        "width": 64,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 40,
+                "to": 54,
+                "title": "<b>40 \u2192 54</b><br>width: 64<br>latency: 1",
+                "width": 2.0,
+                "arrows": "to",
+                "data": {
+                        "src": 40,
+                        "dst": 54,
+                        "width": 64,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 54,
+                "to": 44,
+                "title": "<b>54 \u2192 44</b><br>width: 64<br>latency: 3",
+                "width": 2.0,
+                "arrows": "to",
+                "data": {
+                        "src": 54,
+                        "dst": 44,
+                        "width": 64,
+                        "latency": 3
+                }
+        },
+        {
+                "from": 20,
+                "to": 41,
+                "title": "<b>20 \u2192 41</b><br>width: 256<br>latency: 1",
+                "width": 8.0,
+                "arrows": "to",
+                "data": {
+                        "src": 20,
+                        "dst": 41,
+                        "width": 256,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 41,
+                "to": 52,
+                "title": "<b>41 \u2192 52</b><br>width: 256<br>latency: 1",
+                "width": 8.0,
+                "arrows": "to",
+                "data": {
+                        "src": 41,
+                        "dst": 52,
+                        "width": 256,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 52,
+                "to": 34,
+                "title": "<b>52 \u2192 34</b><br>width: 512<br>latency: 2",
+                "width": 16.0,
+                "arrows": "to",
+                "data": {
+                        "src": 52,
+                        "dst": 34,
+                        "width": 512,
+                        "latency": 2
+                }
+        },
+        {
+                "from": 21,
+                "to": 47,
+                "title": "<b>21 \u2192 47</b><br>width: 128<br>latency: 1",
+                "width": 4.0,
+                "arrows": "to",
+                "data": {
+                        "src": 21,
+                        "dst": 47,
+                        "width": 128,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 22,
+                "to": 47,
+                "title": "<b>22 \u2192 47</b><br>width: 128<br>latency: 1",
+                "width": 4.0,
+                "arrows": "to",
+                "data": {
+                        "src": 22,
+                        "dst": 47,
+                        "width": 128,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 47,
+                "to": 42,
+                "title": "<b>47 \u2192 42</b><br>width: 128<br>latency: 2",
+                "width": 4.0,
+                "arrows": "to",
+                "data": {
+                        "src": 47,
+                        "dst": 42,
+                        "width": 128,
+                        "latency": 2
+                }
+        },
+        {
+                "from": 42,
+                "to": 44,
+                "title": "<b>42 \u2192 44</b><br>width: 128<br>latency: 1",
+                "width": 4.0,
+                "arrows": "to",
+                "data": {
+                        "src": 42,
+                        "dst": 44,
+                        "width": 128,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 23,
+                "to": 49,
+                "title": "<b>23 \u2192 49</b><br>width: 128<br>latency: 1",
+                "width": 4.0,
+                "arrows": "to",
+                "data": {
+                        "src": 23,
+                        "dst": 49,
+                        "width": 128,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 24,
+                "to": 49,
+                "title": "<b>24 \u2192 49</b><br>width: 128<br>latency: 1",
+                "width": 4.0,
+                "arrows": "to",
+                "data": {
+                        "src": 24,
+                        "dst": 49,
+                        "width": 128,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 27,
+                "to": 49,
+                "title": "<b>27 \u2192 49</b><br>width: 128<br>latency: 1",
+                "width": 4.0,
+                "arrows": "to",
+                "data": {
+                        "src": 27,
+                        "dst": 49,
+                        "width": 128,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 28,
+                "to": 49,
+                "title": "<b>28 \u2192 49</b><br>width: 128<br>latency: 1",
+                "width": 4.0,
+                "arrows": "to",
+                "data": {
+                        "src": 28,
+                        "dst": 49,
+                        "width": 128,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 49,
+                "to": 43,
+                "title": "<b>49 \u2192 43</b><br>width: 128<br>latency: 2",
+                "width": 4.0,
+                "arrows": "to",
+                "data": {
+                        "src": 49,
+                        "dst": 43,
+                        "width": 128,
+                        "latency": 2
+                }
+        },
+        {
+                "from": 25,
+                "to": 43,
+                "title": "<b>25 \u2192 43</b><br>width: 128<br>latency: 1",
+                "width": 4.0,
+                "arrows": "to",
+                "data": {
+                        "src": 25,
+                        "dst": 43,
+                        "width": 128,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 26,
+                "to": 43,
+                "title": "<b>26 \u2192 43</b><br>width: 128<br>latency: 1",
+                "width": 4.0,
+                "arrows": "to",
+                "data": {
+                        "src": 26,
+                        "dst": 43,
+                        "width": 128,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 43,
+                "to": 55,
+                "title": "<b>43 \u2192 55</b><br>width: 128<br>latency: 1",
+                "width": 4.0,
+                "arrows": "to",
+                "data": {
+                        "src": 43,
+                        "dst": 55,
+                        "width": 128,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 55,
+                "to": 45,
+                "title": "<b>55 \u2192 45</b><br>width: 128<br>latency: 3",
+                "width": 4.0,
+                "arrows": "to",
+                "data": {
+                        "src": 55,
+                        "dst": 45,
+                        "width": 128,
+                        "latency": 3
+                }
+        },
+        {
+                "from": 29,
+                "to": 51,
+                "title": "<b>29 \u2192 51</b><br>width: 64<br>latency: 1",
+                "width": 2.0,
+                "arrows": "to",
+                "data": {
+                        "src": 29,
+                        "dst": 51,
+                        "width": 64,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 30,
+                "to": 51,
+                "title": "<b>30 \u2192 51</b><br>width: 64<br>latency: 1",
+                "width": 2.0,
+                "arrows": "to",
+                "data": {
+                        "src": 30,
+                        "dst": 51,
+                        "width": 64,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 51,
+                "to": 53,
+                "title": "<b>51 \u2192 53</b><br>width: 64<br>latency: 1",
+                "width": 2.0,
+                "arrows": "to",
+                "data": {
+                        "src": 51,
+                        "dst": 53,
+                        "width": 64,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 53,
+                "to": 45,
+                "title": "<b>53 \u2192 45</b><br>width: 128<br>latency: 2",
+                "width": 4.0,
+                "arrows": "to",
+                "data": {
+                        "src": 53,
+                        "dst": 45,
+                        "width": 128,
+                        "latency": 2
+                }
+        },
+        {
+                "from": 44,
+                "to": 45,
+                "title": "<b>44 \u2192 45</b><br>width: 256<br>latency: 1",
+                "width": 8.0,
+                "arrows": "to",
+                "data": {
+                        "src": 44,
+                        "dst": 45,
+                        "width": 256,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 45,
+                "to": 44,
+                "title": "<b>45 \u2192 44</b><br>width: 256<br>latency: 1",
+                "width": 8.0,
+                "arrows": "to",
+                "data": {
+                        "src": 45,
+                        "dst": 44,
+                        "width": 256,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 44,
+                "to": 48,
+                "title": "<b>44 \u2192 48</b><br>width: 256<br>latency: 1",
+                "width": 8.0,
+                "arrows": "to",
+                "data": {
+                        "src": 44,
+                        "dst": 48,
+                        "width": 256,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 45,
+                "to": 48,
+                "title": "<b>45 \u2192 48</b><br>width: 256<br>latency: 1",
+                "width": 8.0,
+                "arrows": "to",
+                "data": {
+                        "src": 45,
+                        "dst": 48,
+                        "width": 256,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 41,
+                "to": 48,
+                "title": "<b>41 \u2192 48</b><br>width: 256<br>latency: 1",
+                "width": 8.0,
+                "arrows": "to",
+                "data": {
+                        "src": 41,
+                        "dst": 48,
+                        "width": 256,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 42,
+                "to": 48,
+                "title": "<b>42 \u2192 48</b><br>width: 128<br>latency: 1",
+                "width": 4.0,
+                "arrows": "to",
+                "data": {
+                        "src": 42,
+                        "dst": 48,
+                        "width": 128,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 48,
+                "to": 50,
+                "title": "<b>48 \u2192 50</b><br>width: 256<br>latency: 2",
+                "width": 8.0,
+                "arrows": "to",
+                "data": {
+                        "src": 48,
+                        "dst": 50,
+                        "width": 256,
+                        "latency": 2
+                }
+        },
+        {
+                "from": 50,
+                "to": 32,
+                "title": "<b>50 \u2192 32</b><br>width: 256<br>latency: 1",
+                "width": 8.0,
+                "arrows": "to",
+                "data": {
+                        "src": 50,
+                        "dst": 32,
+                        "width": 256,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 50,
+                "to": 33,
+                "title": "<b>50 \u2192 33</b><br>width: 256<br>latency: 1",
+                "width": 8.0,
+                "arrows": "to",
+                "data": {
+                        "src": 50,
+                        "dst": 33,
+                        "width": 256,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 50,
+                "to": 36,
+                "title": "<b>50 \u2192 36</b><br>width: 256<br>latency: 1",
+                "width": 8.0,
+                "arrows": "to",
+                "data": {
+                        "src": 50,
+                        "dst": 36,
+                        "width": 256,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 50,
+                "to": 35,
+                "title": "<b>50 \u2192 35</b><br>width: 256<br>latency: 1",
+                "width": 8.0,
+                "arrows": "to",
+                "data": {
+                        "src": 50,
+                        "dst": 35,
+                        "width": 256,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 40,
+                "to": 35,
+                "title": "<b>40 \u2192 35</b><br>width: 64<br>latency: 2",
+                "width": 2.0,
+                "arrows": "to",
+                "data": {
+                        "src": 40,
+                        "dst": 35,
+                        "width": 64,
+                        "latency": 2
+                }
+        },
+        {
+                "from": 51,
+                "to": 37,
+                "title": "<b>51 \u2192 37</b><br>width: 64<br>latency: 1",
+                "width": 2.0,
+                "arrows": "to",
+                "data": {
+                        "src": 51,
+                        "dst": 37,
+                        "width": 64,
+                        "latency": 1
+                }
+        },
+        {
+                "from": 40,
+                "to": 38,
+                "title": "<b>40 \u2192 38</b><br>width: 64<br>latency: 3",
+                "width": 2.0,
+                "arrows": "to",
+                "data": {
+                        "src": 40,
+                        "dst": 38,
+                        "width": 64,
+                        "latency": 3
+                }
+        },
+        {
+                "from": 40,
+                "to": 39,
+                "title": "<b>40 \u2192 39</b><br>width: 64<br>latency: 3",
+                "width": 2.0,
+                "arrows": "to",
+                "data": {
+                        "src": 40,
+                        "dst": 39,
+                        "width": 64,
+                        "latency": 3
+                }
+        },
+        {
+                "from": 32,
+                "to": 56,
+                "title": "<b>32 \u2192 56</b><br>width: 256<br>latency: 8",
+                "width": 8.0,
+                "arrows": "to",
+                "data": {
+                        "src": 32,
+                        "dst": 56,
+                        "width": 256,
+                        "latency": 8
+                }
+        },
+        {
+                "from": 33,
+                "to": 57,
+                "title": "<b>33 \u2192 57</b><br>width: 256<br>latency: 8",
+                "width": 8.0,
+                "arrows": "to",
+                "data": {
+                        "src": 33,
+                        "dst": 57,
+                        "width": 256,
+                        "latency": 8
+                }
+        },
+        {
+                "from": 34,
+                "to": 58,
+                "title": "<b>34 \u2192 58</b><br>width: 512<br>latency: 4",
+                "width": 16.0,
+                "arrows": "to",
+                "data": {
+                        "src": 34,
+                        "dst": 58,
+                        "width": 512,
+                        "latency": 4
+                }
+        },
+        {
+                "from": 35,
+                "to": 59,
+                "title": "<b>35 \u2192 59</b><br>width: 128<br>latency: 3",
+                "width": 4.0,
+                "arrows": "to",
+                "data": {
+                        "src": 35,
+                        "dst": 59,
+                        "width": 128,
+                        "latency": 3
+                }
+        },
+        {
+                "from": 36,
+                "to": 60,
+                "title": "<b>36 \u2192 60</b><br>width: 256<br>latency: 4",
+                "width": 8.0,
+                "arrows": "to",
+                "data": {
+                        "src": 36,
+                        "dst": 60,
+                        "width": 256,
+                        "latency": 4
+                }
+        },
+        {
+                "from": 37,
+                "to": 61,
+                "title": "<b>37 \u2192 61</b><br>width: 64<br>latency: 10",
+                "width": 2.0,
+                "arrows": "to",
+                "data": {
+                        "src": 37,
+                        "dst": 61,
+                        "width": 64,
+                        "latency": 10
+                }
+        },
+        {
+                "from": 38,
+                "to": 62,
+                "title": "<b>38 \u2192 62</b><br>width: 32<br>latency: 5",
+                "width": 1,
+                "arrows": "to",
+                "data": {
+                        "src": 38,
+                        "dst": 62,
+                        "width": 32,
+                        "latency": 5
+                }
+        },
+        {
+                "from": 39,
+                "to": 63,
+                "title": "<b>39 \u2192 63</b><br>width: 32<br>latency: 15",
+                "width": 1,
+                "arrows": "to",
+                "data": {
+                        "src": 39,
+                        "dst": 63,
+                        "width": 32,
+                        "latency": 15
+                }
+        }
+];
+
+        // Create network
+        const container = document.getElementById('network');
+        const data = {
+            nodes: new vis.DataSet(nodesData),
+            edges: new vis.DataSet(edgesData)
+        };
+
+        const options = {
+            nodes: {
+                shape: 'dot',
+                size: 25,
+                font: {
+                    size: 14,
+                    color: '#333'
+                },
+                borderWidth: 2,
+                borderWidthSelected: 4
+            },
+            edges: {
+                color: {
+                    color: '#848484',
+                    highlight: '#667eea',
+                    hover: '#667eea'
+                },
+                smooth: {
+                    type: 'continuous'
+                },
+                font: {
+                    size: 12,
+                    align: 'middle'
+                }
+            },
+            physics: {
+                enabled: true,
+                barnesHut: {
+                    gravitationalConstant: -8000,
+                    centralGravity: 0.3,
+                    springLength: 200,
+                    springConstant: 0.04,
+                    damping: 0.09
+                },
+                stabilization: {
+                    iterations: 200
+                }
+            },
+            interaction: {
+                hover: true,
+                tooltipDelay: 100,
+                navigationButtons: true,
+                keyboard: true
+            }
+        };
+
+        const network = new vis.Network(container, data, options);
+
+        // Event handlers
+        network.on('click', function(params) {
+            const detailsPanel = document.getElementById('detailsPanel');
+
+            if (params.nodes.length > 0) {
+                // Node clicked
+                const nodeId = params.nodes[0];
+                const node = nodesData.find(n => n.id === nodeId);
+
+                detailsPanel.innerHTML = `
+                    <h3>🔵 Node Details</h3>
+                    <pre>${JSON.stringify(node.data, null, 2)}</pre>
+                `;
+            } else if (params.edges.length > 0) {
+                // Edge clicked
+                const edgeId = params.edges[0];
+                const edge = edgesData.find(e =>
+                    e.from === data.edges.get(edgeId).from &&
+                    e.to === data.edges.get(edgeId).to
+                );
+
+                detailsPanel.innerHTML = `
+                    <h3>➡️ Edge Details</h3>
+                    <pre>${JSON.stringify(edge.data, null, 2)}</pre>
+                `;
+            } else {
+                // Background clicked
+                detailsPanel.innerHTML = `
+                    <div class="info-message">
+                        💡 Click on a node or edge to see detailed information
+                    </div>
+                `;
+            }
+        });
+
+        // Search functionality
+        document.getElementById('searchBox').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+
+            if (searchTerm === '') {
+                network.selectNodes([]);
+                return;
+            }
+
+            const matchingNodes = nodesData
+                .filter(n => n.label.toLowerCase().includes(searchTerm))
+                .map(n => n.id);
+
+            network.selectNodes(matchingNodes);
+            if (matchingNodes.length > 0) {
+                network.focus(matchingNodes[0], {
+                    scale: 1.5,
+                    animation: true
+                });
+            }
+        });
+
+        // Helper functions
+        function fitNetwork() {
+            network.fit({
+                animation: {
+                    duration: 1000,
+                    easingFunction: 'easeInOutQuad'
+                }
+            });
+        }
+
+        function resetView() {
+            network.moveTo({
+                scale: 1.0,
+                animation: {
+                    duration: 1000,
+                    easingFunction: 'easeInOutQuad'
+                }
+            });
+        }
+
+        // Stabilization progress
+        network.on('stabilizationProgress', function(params) {
+            console.log('Stabilization progress:', params.iterations);
+        });
+
+        network.on('stabilizationIterationsDone', function() {
+            console.log('Stabilization complete');
+            network.setOptions({ physics: false });
+        });
+
+        // Initial fit
+        setTimeout(() => fitNetwork(), 1000);
+    </script>
+</body>
+</html>

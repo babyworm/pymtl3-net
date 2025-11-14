@@ -1,0 +1,96 @@
+network: Irregular
+num_nodes: 190
+description: AI training chip with 256 tensor cores
+note: Large-scale template with 190 total NIUs - expand as needed
+nodes:
+- id: 0
+  type: Initiator
+  name: Core_0
+  avg_throughput: 5.0
+  max_throughput: 10.0
+  latency_requirement: 50
+  priority: 0
+  traffic_pattern: bursty
+- id: 1
+  type: Initiator
+  name: Core_1
+  avg_throughput: 5.0
+  max_throughput: 10.0
+  latency_requirement: 50
+  priority: 1
+  traffic_pattern: bursty
+- id: 2
+  type: Initiator
+  name: Core_2
+  avg_throughput: 5.0
+  max_throughput: 10.0
+  latency_requirement: 50
+  priority: 2
+  traffic_pattern: bursty
+- id: 3
+  type: Initiator
+  name: Core_3
+  avg_throughput: 5.0
+  max_throughput: 10.0
+  latency_requirement: 50
+  priority: 0
+  traffic_pattern: bursty
+- id: 4
+  type: Initiator
+  name: Core_4
+  avg_throughput: 5.0
+  max_throughput: 10.0
+  latency_requirement: 50
+  priority: 1
+  traffic_pattern: bursty
+- id: 5
+  type: Initiator
+  name: Core_5
+  avg_throughput: 5.0
+  max_throughput: 10.0
+  latency_requirement: 50
+  priority: 2
+  traffic_pattern: bursty
+- id: 6
+  type: Initiator
+  name: Core_6
+  avg_throughput: 5.0
+  max_throughput: 10.0
+  latency_requirement: 50
+  priority: 0
+  traffic_pattern: bursty
+- id: 7
+  type: Initiator
+  name: Core_7
+  avg_throughput: 5.0
+  max_throughput: 10.0
+  latency_requirement: 50
+  priority: 1
+  traffic_pattern: bursty
+- id: 8
+  type: Initiator
+  name: Core_8
+  avg_throughput: 5.0
+  max_throughput: 10.0
+  latency_requirement: 50
+  priority: 2
+  traffic_pattern: bursty
+- id: 9
+  type: Initiator
+  name: Core_9
+  avg_throughput: 5.0
+  max_throughput: 10.0
+  latency_requirement: 50
+  priority: 0
+  traffic_pattern: bursty
+graph:
+  edges: []
+constraints:
+  niu_entry_only: true
+  clock_domains:
+  - name: noc
+    frequency: 2000
+  enforce_width_match: false
+  max_end_to_end_latency: 500
+  validate_bandwidth: true
+  validate_latency: true
